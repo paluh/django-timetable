@@ -46,7 +46,7 @@ class Models(TestCase):
         rule = rrule.rrule(rrule.DAILY, dtstart=now)
         self.assertEqual(event.occurrences.count(), len(rule.between(now, new_end, inc=True)))
 
-    def test_add_event_fails_when_occurrences_time_collision(self):
+    def test_add_event_fails_for_occurrences_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(days=3)
         event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
@@ -62,7 +62,7 @@ class Models(TestCase):
         )
         self.assertRaises(ValidationError, lambda: event.full_clean())
 
-    def test_add_onetime_event_fails_when_occurrences_time_collision(self):
+    def test_add_onetime_event_fails_for_occurrences_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(weeks=3)
         event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
@@ -93,7 +93,7 @@ class Models(TestCase):
         )
         self.assertRaises(ValidationError, lambda: event.full_clean())
 
-    def test_occurrence_extending_fails_when_time_collision(self):
+    def test_occurrence_extending_fails_for_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(days=3)
         event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
