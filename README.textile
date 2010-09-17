@@ -4,7 +4,7 @@ h2. OVERVIEW
 
 This is lightweight django app for creating recurring events calendar (one time event too ;-). It's inspired by django-schedule - main difference is use of abstract model factory so it's easier to extend and use this app. Additionally there is sequential_calendar app which you can use to restrict occurrences overlapping.
 
-Thanks to Patrys mplementation of abstract models factory (abstract.py taken from here: http://gist.github.com/584106) you can subclass event and occurrences models as you want without using generic relations.
+Thanks to Patrys implementation of abstract models factory (abstract.py taken from here: http://gist.github.com/584106) you can subclass event and occurrences models as you want without using generic relations.
 
 h2. USAGE
 
