@@ -34,7 +34,7 @@ class CalendarEventFactory(EventFactory):
             create = True
         models.Model.save(self, *args, **kwargs)
         if create and gready:
-            self.get_occurrences(self.start, self.end_recurring_period, commit=True)
+            self.get_occurrences(self.start, self.end_recurring_period or self.end, commit=True)
 
 class SequentialEventFactory(CalendarEventFactory):
     class Meta:
@@ -50,11 +50,14 @@ class SequentialEventFactory(CalendarEventFactory):
 
     def clean(self):
         super(SequentialEventFactory, self).clean()
-        if not self.end or not self.start or not self.end_recurring_period:
+        end_recurring_period = self.end_recurring_period
+        if not end_recurring_period:
+            end_recurring_period = self.end
+        if not self.end or not self.start:
             return
 
         MAX_SQL_VARS = getattr(settings, 'MAX_SQL_VARS', 500)
-        occurrences = self.get_occurrences(self.start, self.end_recurring_period)
+        occurrences = self.get_occurrences(self.start, end_recurring_period)
         query = Q()
         for index, occurrence in enumerate(occurrences):
             #FIXME: this event model assumes that event is period: start <= event < end

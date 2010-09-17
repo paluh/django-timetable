@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import ugettext, ugettext_lazy as _
 
-from .abstraction import AbstractModelFactory, AbstractMixin
+from .abstract import AbstractMixin
 
 class RruleChoice(tuple):
     _rr_params_cache = {}
@@ -21,7 +21,8 @@ class RruleChoice(tuple):
 class EventFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'))
     end = models.DateTimeField(_('end'),help_text=_('The end time must be later than the start time.'))
-    end_recurring_period = models.DateTimeField(_('end recurring period'), help_text=_('This date is ignored for one time only events.'))
+    end_recurring_period = models.DateTimeField(_('end recurring period'), blank=True, null=True,
+            help_text=_('This date is ignored for one time only events.'))
 
     RULES = (
         ('ONCE', _('Once')),
@@ -55,30 +56,24 @@ class EventFactory(models.Model, AbstractMixin):
         if self.rule != 'ONCE':
             rule = self.get_rrule()
             starts = rule.between(start, end, inc=True)
-            #this prevents 'too many SQL variables' raised by sqlite
-            count = 0
-            for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
-                count += self.occurrences.filter(original_start__in=slice).count()
-            result = list(self.occurrences.filter(start__gte=start, start__lt=end, cancelled=False))
-            if count != len(starts):
-                db_starts = []
-                for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
-                    db_starts.extend(self.occurrences.filter(original_start__in=slice).values_list('original_start', flat=True))
-                missed = filter(lambda start: start not in db_starts, starts)
-                for s in missed:
-                    result.append(self.occurrences.model(event=self, original_start=s, start=s, original_end=s+delta, end=s+delta))
-                if commit:
-                    for occurrence in result:
-                        occurrence.save()
-            result.sort(lambda o1, o2: cmp(o1.start, o2.start))
         else:
-            try:
-                result = [self.occurrences.get()]
-            except self.occurrences.model.DoesNotExist:
-                occurrence = self.occurrences.model(event=self, original_start=start, start=start, original_end=start+delta, end=start+delta)
-                if commit:
+            starts = [self.start]
+        #this prevents 'too many SQL variables' raised by sqlite
+        count = 0
+        for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
+            count += self.occurrences.filter(original_start__in=slice).count()
+        result = list(self.occurrences.filter(start__gte=start, start__lt=end, cancelled=False))
+        if count != len(starts):
+            db_starts = []
+            for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
+                db_starts.extend(self.occurrences.filter(original_start__in=slice).values_list('original_start', flat=True))
+            missed = filter(lambda start: start not in db_starts, starts)
+            for s in missed:
+                result.append(self.occurrences.model(event=self, original_start=s, start=s, original_end=s+delta, end=s+delta))
+            if commit:
+                for occurrence in result:
                     occurrence.save()
-                result = [occurrence]
+        result.sort(lambda o1, o2: cmp(o1.start, o2.start))
         return result
 
     def get_rrule(self):
@@ -91,7 +86,9 @@ class EventFactory(models.Model, AbstractMixin):
 
     def clean(self):
         if self.start and self.end and self.start > self.end:
-            raise ValidationError("Start value can't be greater then end value!")
+            raise ValidationError("Start value can't be greater then end value.")
+        if self.end_recurring_period is None and self.rule != 'ONCE':
+            raise ValidationError("You have to pass end period for recurring events!")
 
     def save(self, *args, **kwargs):
         models.Model.save(self, *args, **kwargs)

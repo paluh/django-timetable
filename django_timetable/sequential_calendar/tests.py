@@ -17,7 +17,7 @@ class Occurrence(SequentialOccurrenceFactory.construct(event=Event)):
     def __unicode__(self):
         return '%s (%s - %s)' % (self.event, self.start, self.end)
 
-class ModelsTests(TestCase):
+class Models(TestCase):
     def setUp(self):
         self.user_test = User.objects.create_user(
                 username='test', password='test', email='test@example.com'
@@ -34,7 +34,6 @@ class ModelsTests(TestCase):
         rule = rrule.rrule(rrule.DAILY, dtstart=now)
         self.assertEqual(event.occurrences.count(), len(rule.between(now, end_recurring, inc=True)))
 
-    #FIXME: what about testing shortening recurring period
     def test_extending_recurring_period_generates_additional_occurrences(self):
         now = datetime.datetime.now().replace(microsecond=0)
         end_recurring = now + datetime.timedelta(weeks=4)
@@ -60,6 +59,21 @@ class ModelsTests(TestCase):
             end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
+        )
+        self.assertRaises(ValidationError, lambda: event.full_clean())
+
+    def test_add_onetime_event_fails_when_occurrences_time_collision(self):
+        now = datetime.datetime.now()
+        end_recurring = now + datetime.timedelta(weeks=3)
+        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+            end_recurring_period=end_recurring,
+            calendar=self.user_test, rule='WEEKLY'
+        )
+        overlapping_start = now+datetime.timedelta(minutes=30)
+        event = Event(
+            start=overlapping_start,
+            end=now+datetime.timedelta(hours=1),
+            calendar=self.user_test, rule='ONCE'
         )
         self.assertRaises(ValidationError, lambda: event.full_clean())
 

@@ -4,17 +4,17 @@ h2. OVERVIEW
 
 This is lightweight django app for creating recurring events calendar (one time event too ;-). It's inspired by django-schedule - main difference is use of abstract model factory so it's easier to extend and use this app. Additionally there is sequential_calendar app which you can use to restrict occurrences overlapping.
 
-Thanks to Patrys (Patryk Zawadzki) implementation of abstract models factory (abstraction.py taken from here: http://gist.github.com/584106) you can subclass event and occurrences models as you want without using generic relations.
+Thanks to Patrys mplementation of abstract models factory (abstract.py taken from here: http://gist.github.com/584106) you can subclass event and occurrences models as you want without using generic relations.
 
 h2. USAGE
 
 To create real model from provided factories you have to call construct.
 
-h3. 1. timetable
+h3. 1. django_timetable
 
 <pre>
 <code>
-    from timetable.models import EventFactory, OccurrenceFactory
+    from django_timetable.models import EventFactory, OccurrenceFactory
 
     class Programme(SequentialEventFactory.construct(calendar=Radio)):
         title = models.CharField(max_length=128)
@@ -24,7 +24,7 @@ h3. 1. timetable
 </code>
 </pre>
 
-h3. 2. timetable.sequential_calendar
+h3. 2. django_timetable.sequential_calendar
 
 This app adds calendar reference to events and implements additional constraint to event occurrences: they don't overllap in one calendar.
 
@@ -32,7 +32,7 @@ Let assume that we are going to implement radio schedule:
 
 <pre>
 <code>
-    from timetable.sequential_calendar.models import (
+    from django_timetable.sequential_calendar.models import (
         SequentialEventFactory, SequentialOccurrenceFactory)
 
     class Radio(models.Model):
@@ -41,7 +41,7 @@ Let assume that we are going to implement radio schedule:
     class Programme(SequentialEventFactory.construct(calendar=Radio)):
         title = models.CharField(max_length=128)
 
-    class ProgrammeOccurrence(SequentialEventFactory.construct(event=Event)):
+    class ProgrammeOccurrence(SequentialOccurrenceFactory.construct(event=Programme)):
         pass
 </code>
 </pre>
@@ -53,24 +53,34 @@ Sequential event is gready, so during creation it generates all occurrences (be 
     >>> import datetime
     >>> from radio.models import Radio, Programme
     >>> radio = Radio.objects.create(name="CCB radio one")
-    >>> start = datetime(2010, 17, 9, 19, 0)
-    >>>
-    programme = Programme.objects.create(
-            title='And Now for Something Completely Different',
-            calendar=radio,
-            rule='WEEKLY',
-            start=start,
-            end=start+datetime.timedelta(hours=1),
-            end_recurring_period=start+datetime.timedelta(weeks=5)
-    )
+    >>> start = datetime.datetime(2010, 9, 12, 19, 0)
+    >>> programme = Programme.objects.create(
+    ...     title='And Now for Something Completely Different',
+    ...     calendar=radio,
+    ...     rule='WEEKLY',
+    ...     start=start,
+    ...     end=start+datetime.timedelta(hours=1),
+    ...     end_recurring_period=start+datetime.timedelta(weeks=5)
+    ... )
     >>> programme.occurrences.count()
     6
+    >>> overlapping_start = start + datetime.timedelta(minutes=30)
+    >>> programme = Programme(
+    ...     title="title",
+    ...     calendar=radio,
+    ...     rule='ONCE',
+    ...     start=overlapping_start,
+    ...     end=overlapping_start+datetime.timedelta(hours=1),
+    ... )
+    >>> programme.full_clean()
+    ...
+    django.core.exceptions.ValidationError: {'__all__': [u'Event occurrence has time collision with other occurrence from this calendar.']}
 </code>
 </pre>
 
 h2. TESTING
 
-To test this apps just run: ./manage.py django_timetable sequential_calendar after installing this app in your project.
+To test this apps just run: ./manage.py django_timetable sequential_calendar from your project or examples/test_project directory.
 
 h2. TODO
 
