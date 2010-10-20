@@ -5,5 +5,9 @@ h2. OVERVIEW
 “What does this application do?”
 
 * Implements recurring occurrences series (for example: create series of 'event' which occurres every monday for next two months).
-* Uses abstract models factories (http://gist.github.com/584106) so you can easly subclass given models without any overhead or generic relations (for example:.
+* Uses abstract models factories (http://gist.github.com/584106) so you can easly subclass given models without any overhead or generic relations
+
+Examples?
+
+For examples look into test.py
 

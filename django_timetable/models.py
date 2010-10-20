@@ -51,8 +51,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
 
     def get_occurrences(self, start=None, end=None, commit=False, defaults=None):
         defaults = defaults or {}
-        #dateutil rrule implemetation ignores microseconds
         start, end = start or self.start, end or self.end_recurring_period or self.end
+        #FIXME: dateutil rrule implemetation ignores microseconds
         start, end = start.replace(microsecond=0), end.replace(microsecond=0)
         delta = self.end - self.start
         if self.rule != 'ONCE':
@@ -64,7 +64,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         count = 0
         for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
             count += self.occurrences.filter(original_start__in=slice).count()
-        result = list(self.occurrences.filter(start__gte=start, start__lt=end, cancelled=False))
+        result = list(self.occurrences.filter(start__gte=start, start__lt=end))
         if count != len(starts):
             db_starts = []
             for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
@@ -90,12 +90,11 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         if self.start and self.end and self.start > self.end:
             raise ValidationError("Start value can't be greater then end value.")
         if self.end_recurring_period is None and self.rule != 'ONCE':
-            raise ValidationError("You have to pass end period for recurring events!")
+            raise ValidationError("You have to pass end period for recurring series!")
 
 class OccurrenceFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'), blank=True)
     end = models.DateTimeField(_('end'), blank=True)
-    cancelled = models.BooleanField(_('cancelled'), default=False)
     original_start = models.DateTimeField(_('original start'))
     original_end = models.DateTimeField(_('original end'))
 
