@@ -5,12 +5,12 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, F
 
-from ..models import EventFactory, OccurrenceFactory
+from ..models import OccurrenceSeriesFactory, OccurrenceFactory
 
 class TimeColisionError(ValidationError):
     pass
 
-class CalendarEventFactory(EventFactory):
+class CalendarOccurrenceSeriesFactory(OccurrenceSeriesFactory):
     class Meta:
         abstract = True
 
@@ -27,29 +27,29 @@ class CalendarEventFactory(EventFactory):
         }
         return fields
 
-    def save(self, *args, **kwargs):
-        create = False
-        gready = kwargs.pop('gready', True)
-        if not self.id:
-            create = True
-        models.Model.save(self, *args, **kwargs)
-        if create and gready:
-            self.get_occurrences(self.start, self.end_recurring_period or self.end, commit=True)
+    #def save(self, *args, **kwargs):
+    #    create = False
+    #    gready = kwargs.pop('gready', True)
+    #    if not self.id:
+    #        create = True
+    #    models.Model.save(self, *args, **kwargs)
+    #    if create and gready:
+    #        self.get_occurrences(self.start, self.end_recurring_period or self.end, commit=True)
 
-class SequentialEventFactory(CalendarEventFactory):
+class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
     class Meta:
         abstract = True
 
-    def update_recurring_period(self, new_end):
+    def update_recurring_period(self, new_end, defaults=None):
         self.end_recurring_period = new_end
         self.save()
         now = datetime.datetime.now()
         self.clean()
-        self.get_occurrences(now, self.end_recurring_period, commit=True)
+        self.get_occurrences(now, self.end_recurring_period, commit=True, defaults=defaults)
         self.occurrences.filter(start__gt=self.end_recurring_period).delete()
 
     def clean(self):
-        super(SequentialEventFactory, self).clean()
+        super(SequentialOccurrenceSeriesFactory, self).clean()
         end_recurring_period = self.end_recurring_period
         if not end_recurring_period:
             end_recurring_period = self.end
@@ -94,8 +94,3 @@ class SequentialOccurrenceFactory(OccurrenceFactory):
                     )
             if self.__class__.objects.filter(query).exists():
                 raise TimeColisionError("Occurrence has time collision with other occurrence from this calendar.")
-
-    def save(self, *args, **kwargs):
-        if kwargs.pop('validation', False):
-            self.full_clean()
-        super(SequentialOccurrenceFactory, self).save(*args, **kwargs)

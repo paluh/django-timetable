@@ -6,12 +6,12 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.test import TestCase
 
-from .models import SequentialEventFactory, SequentialOccurrenceFactory
+from .models import SequentialOccurrenceSeriesFactory, SequentialOccurrenceFactory
 
-class Event(SequentialEventFactory.construct(calendar=User)):
+class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User)):
     pass
 
-class Occurrence(SequentialOccurrenceFactory.construct(event=Event)):
+class Occurrence(SequentialOccurrenceFactory.construct(event=OccurrenceSeries)):
     name = models.CharField(max_length=128, blank=True)
 
     def __unicode__(self):
@@ -27,20 +27,24 @@ class Models(TestCase):
     def test_initial_generation_creates_proper_occurrence_number(self):
         now = datetime.datetime.now().replace(microsecond=0)
         end_recurring = now+datetime.timedelta(weeks=4)
-        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
         )
+        event.get_occurrences(commit=True)
+
         rule = rrule.rrule(rrule.DAILY, dtstart=now)
         self.assertEqual(event.occurrences.count(), len(rule.between(now, end_recurring, inc=True)))
 
     def test_extending_recurring_period_generates_additional_occurrences(self):
         now = datetime.datetime.now().replace(microsecond=0)
         end_recurring = now + datetime.timedelta(weeks=4)
-        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
         )
+        event.get_occurrences(commit=True)
+
         new_end = end_recurring + datetime.timedelta(weeks=4)
         event.update_recurring_period(new_end)
         rule = rrule.rrule(rrule.DAILY, dtstart=now)
@@ -49,12 +53,14 @@ class Models(TestCase):
     def test_add_event_fails_for_occurrences_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(days=3)
-        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
         )
+        event.get_occurrences(commit=True)
+
         overlapping_start = now+datetime.timedelta(minutes=30)
-        event = Event(
+        event = OccurrenceSeries(
             start=overlapping_start,
             end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
@@ -65,12 +71,14 @@ class Models(TestCase):
     def test_add_onetime_event_fails_for_occurrences_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(weeks=3)
-        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='WEEKLY'
         )
+        event.get_occurrences(commit=True)
+
         overlapping_start = now+datetime.timedelta(minutes=30)
-        event = Event(
+        event = OccurrenceSeries(
             start=overlapping_start,
             end=now+datetime.timedelta(hours=1),
             calendar=self.user_test, rule='ONCE'
@@ -81,11 +89,12 @@ class Models(TestCase):
         start = datetime.datetime.now()
         end = start + datetime.timedelta(hours=1)
         end_recurring = start + datetime.timedelta(days=3)
-        event = Event.objects.create(start=start, end=end,
+        event = OccurrenceSeries.objects.create(start=start, end=end,
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
         )
-        event = Event(
+        event.get_occurrences(commit=True)
+        event = OccurrenceSeries(
             start=start,
             end=end,
             end_recurring_period=end_recurring,
@@ -96,11 +105,11 @@ class Models(TestCase):
     def test_occurrence_extending_fails_for_time_collision(self):
         now = datetime.datetime.now()
         end_recurring = now + datetime.timedelta(days=3)
-        event = Event.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
             calendar=self.user_test, rule='DAILY'
         )
-        occurrences = event.occurrences.all()
+        occurrences = event.get_occurrences(commit=True)
         occurrence_1 = occurrences[0]
         occurrence_2 = occurrences[1]
         occurrence_1.start = occurrence_2.start + (occurrence_2.end - occurrence_2.start)/2
@@ -109,9 +118,9 @@ class Models(TestCase):
 
     def test_event_validation_does_not_generates_too_long_sql_query(self):
         #Sqlite raises DatabaseError for query with too many variables.
-        #Dynamic query is used in Event validation method where
+        #Dynamic query is used in OccurrenceSeries validation method where
         #all occurrences time parameters are inserted into the query.
-        event = Event(start=self.now, end=self.now+datetime.timedelta(hours=1),
+        event = OccurrenceSeries(start=self.now, end=self.now+datetime.timedelta(hours=1),
             end_recurring_period=self.now+datetime.timedelta(weeks=4),
             calendar=self.user_test, rule='HOURLY'
         )
