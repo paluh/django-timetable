@@ -6,17 +6,7 @@ from django.db import models
 from django.utils.translation import ugettext, ugettext_lazy as _
 
 from .abstract import AbstractMixin
-
-class RruleChoice(tuple):
-    _rr_params_cache = {}
-    def __new__(cls, value, display, rr_params):
-        instance = super(RruleChoice, cls).__new__(cls, (value, display))
-        cls._rr_params_cache[value] = rr_params
-        return instance
-
-    @classmethod
-    def get_params(cls, value):
-        return cls._rr_params_cache[value]
+from .fields import RruleField
 
 class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'))
@@ -24,27 +14,32 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     end_recurring_period = models.DateTimeField(_('end recurring period'), blank=True, null=True,
             help_text=_('This date is ignored for one time only events.'))
 
+    class Meta:
+        abstract = True
+
+    #you can define rrules consts by:
+    #  * creating tuple which contains known interval value name from rrule module,
+    #       for example: rrule.WEEKLY -> ('WEEKLY', '<display value>')
+    #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
+    #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
     RULES = (
         ('ONCE', _('Once')),
         ('YEARLY', _('Yearly')),
         ('MONTHLY', _('Monthly')),
         ('WEEKLY', _('Weekly')),
-        #example of more complicated rrule
-        RruleChoice('EVERY_TWO_WEEKS', _('Every two weeks'),
-            rr_params={'freq': rrule.WEEKLY, 'interval':2}),
+        #example of more complicated rule
+        ('EVERY_TWO_WEEKS', _('Every two weeks'), {'freq': rrule.WEEKLY, 'interval': 2}),
         ('DAILY', _('Daily')),
         ('HOURLY', _('Hourly')),
         ('MINUTELY', _('Minutely')),
         ('SECONDLY', _('Secondly'))
     )
-    class Meta:
-        abstract = True
-
     @classmethod
     def contribute(cls, rule_choices=RULES, default_rule=0):
+        rule_choices = rule_choices or cls.RULES
         max_length = max([len(rule_choice[0]) for rule_choice in rule_choices])
         fields = {
-            'rule': models.CharField(choices=rule_choices,
+            'rule': RruleField(choices=rule_choices,
                 max_length=max_length, default=rule_choices[default_rule][0])
         }
         return fields
@@ -55,9 +50,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         #FIXME: dateutil rrule implemetation ignores microseconds
         start, end = start.replace(microsecond=0), end.replace(microsecond=0)
         delta = self.end - self.start
-        if self.rule != 'ONCE':
-            rule = self.get_rrule()
-            starts = rule.between(start, end, inc=True)
+        if self.rule != None:
+            starts = self.rule(start, end)
         else:
             starts = [self.start]
         #this prevents 'too many SQL variables' raised by sqlite
@@ -78,18 +72,10 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         result.sort(lambda o1, o2: cmp(o1.start, o2.start))
         return result
 
-    def get_rrule(self):
-        if hasattr(rrule, self.rule):
-            frequency = getattr(rrule, self.rule)
-            return rrule.rrule(frequency, dtstart=self.start)
-
-        params = RruleChoice.get_params(self.rule)
-        return rrule.rrule(dtstart=self.start, **params)
-
     def clean(self):
         if self.start and self.end and self.start > self.end:
             raise ValidationError("Start value can't be greater then end value.")
-        if self.end_recurring_period is None and self.rule != 'ONCE':
+        if self.end_recurring_period is None and self.rule != None:
             raise ValidationError("You have to pass end period for recurring series!")
 
 class OccurrenceFactory(models.Model, AbstractMixin):

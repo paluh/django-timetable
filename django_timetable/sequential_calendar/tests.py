@@ -8,7 +8,14 @@ from django.test import TestCase
 
 from .models import SequentialOccurrenceSeriesFactory, SequentialOccurrenceFactory
 
-class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User)):
+RRULES_CHOICES = (
+    ('ONCE', 'once',),
+    ('HOURLY', 'hourly'),
+    ('DAILY', 'daily',),
+    ('WEEKLY', 'weekly'),
+    ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
+)
+class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User, rule_choices=RRULES_CHOICES)):
     pass
 
 class Occurrence(SequentialOccurrenceFactory.construct(event=OccurrenceSeries)):
@@ -33,11 +40,12 @@ class Models(TestCase):
         )
         event.get_occurrences(commit=True)
 
-        rule = rrule.rrule(rrule.DAILY, dtstart=now)
-        self.assertEqual(event.occurrences.count(), len(rule.between(now, end_recurring, inc=True)))
+        rule = rrule.rrule(rrule.DAILY)
+        self.assertEqual(event.occurrences.count(), len(list(rrule.rrule(dtstart=now, until=end_recurring, freq=rrule.DAILY))))
 
     def test_extending_recurring_period_generates_additional_occurrences(self):
-        now = datetime.datetime.now().replace(microsecond=0)
+        now = datetime.datetime.now()
+        now = now.replace(microsecond=0)
         end_recurring = now + datetime.timedelta(weeks=4)
         event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=end_recurring,
@@ -47,8 +55,7 @@ class Models(TestCase):
 
         new_end = end_recurring + datetime.timedelta(weeks=4)
         event.update_recurring_period(new_end)
-        rule = rrule.rrule(rrule.DAILY, dtstart=now)
-        self.assertEqual(event.occurrences.count(), len(rule.between(now, new_end, inc=True)))
+        self.assertEqual(event.occurrences.count(), len(list(rrule.rrule(dtstart=now, until=new_end, freq=rrule.DAILY))))
 
     def test_add_event_fails_for_occurrences_time_collision(self):
         now = datetime.datetime.now()
@@ -124,5 +131,5 @@ class Models(TestCase):
             end_recurring_period=self.now+datetime.timedelta(weeks=4),
             calendar=self.user_test, rule='HOURLY'
         )
-        event.full_clean()
         event.save()
+        event.get_occurrences(commit=True)

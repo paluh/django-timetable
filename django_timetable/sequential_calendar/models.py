@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q, F
 
 from ..models import OccurrenceSeriesFactory, OccurrenceFactory
+from ..fields import RruleField
 
 class TimeColisionError(ValidationError):
     pass
@@ -16,25 +17,12 @@ class CalendarOccurrenceSeriesFactory(OccurrenceSeriesFactory):
 
     @classmethod
     def contribute(cls, rule_choices=None, default_rule=0, calendar=None):
-        rule_choices = rule_choices or cls.RULES
+        fields = super(CalendarOccurrenceSeriesFactory, cls).contribute(rule_choices, default_rule)
+
         if not calendar:
             raise ValueError("Sequential events requires calendar model.")
-        max_length = max([len(rule_choice[0]) for rule_choice in rule_choices])
-        fields = {
-            'rule': models.CharField(choices=rule_choices,
-                max_length=max_length, default=rule_choices[default_rule][0]),
-            'calendar': models.ForeignKey(calendar, related_name="events")
-        }
+        fields['calendar'] = models.ForeignKey(calendar, related_name="events")
         return fields
-
-    #def save(self, *args, **kwargs):
-    #    create = False
-    #    gready = kwargs.pop('gready', True)
-    #    if not self.id:
-    #        create = True
-    #    models.Model.save(self, *args, **kwargs)
-    #    if create and gready:
-    #        self.get_occurrences(self.start, self.end_recurring_period or self.end, commit=True)
 
 class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
     class Meta:

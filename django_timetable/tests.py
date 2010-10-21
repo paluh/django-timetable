@@ -5,9 +5,18 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.test import TestCase
 
-from .models import OccurrenceSeriesFactory, OccurrenceFactory, RruleChoice
+from .models import OccurrenceSeriesFactory, OccurrenceFactory
+from .fields import RruleField
 
-class OccurrenceSeries(OccurrenceSeriesFactory.construct()):
+RRULES_CHOICES = (
+    ('ONCE', 'once',),
+    ('HOURLY', 'hourly'),
+    ('DAILY', 'daily',),
+    ('WEEKLY', 'weekly'),
+    ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
+)
+
+class OccurrenceSeries(OccurrenceSeriesFactory.construct(rule_choices=RRULES_CHOICES)):
     pass
 
 class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeries)):
@@ -15,7 +24,6 @@ class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeries)):
 
     def __unicode__(self):
         return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
-
 
 #models for testing defaults values passing
 class OccurrenceSeriesWithRequiredFields(OccurrenceSeriesFactory.construct()):
@@ -26,16 +34,26 @@ class OccurrenceWithRequiredField(OccurrenceFactory.construct(event=OccurrenceSe
     def __unicode__(self):
         return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
 
-class ModelsTests(TestCase):
-    def test_get_occurrences_returns_proper_new_objects_number(self):
-        now = datetime.datetime.now().replace(microsecond=0)
-        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='HOURLY')
+class Fields(TestCase):
+    def test_custom_rrule_value(self):
+        now = datetime.datetime.now()
+        o = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+            end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
+        self.assertEqual(o.rule, RruleField.RruleWrapper(freq=rrule.WEEKLY, interval=2))
 
-        end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(now, end)
-        rule = rrule.rrule(rrule.HOURLY, dtstart=now)
-        self.assertEqual(len(occurrences), len(rule.between(now, end, inc=True)))
+    def test_once_rrule_value(self):
+        o = OccurrenceSeries(rule='ONCE')
+        self.assertEqual(o.rule, None)
+
+class Models(TestCase):
+    def test_get_occurrences_saves_proper_objects_number(self):
+        start = datetime.datetime.now().replace(microsecond=0)
+        end = start+datetime.timedelta(hours=1)
+        end_recurring_period=start+datetime.timedelta(weeks=5)
+
+        event = OccurrenceSeries.objects.create(start=start, end=end, end_recurring_period=end_recurring_period, rule='WEEKLY')
+        occurrences = event.get_occurrences(commit=False)
+        self.assertEqual(len(occurrences), len(list(rrule.rrule(dtstart=start, until=end_recurring_period, freq=rrule.WEEKLY))))
 
     def test_get_occurrences_returns_one_object_for_onetime_rule(self):
         now = datetime.datetime.now()
@@ -79,23 +97,23 @@ class ModelsTests(TestCase):
         end = now+datetime.timedelta(days=1)
         occurrences = event.get_occurrences(now, end)
         self.assertEqual(len(occurrences),
-                len(rule.between(now, end, inc=True)))
+                len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.HOURLY))))
 
     def test_get_occurrences_returns_proper_number_for_custom_rrule(self):
         now = datetime.datetime.now().replace(microsecond=0)
         event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
 
-        rule = rrule.rrule(dtstart=now, **RruleChoice.get_params('EVERY_TWO_WEEKS'))
         end = now+datetime.timedelta(weeks=4)
         event.get_occurrences(now, end)
 
         occurrences = event.get_occurrences(now, end)
         self.assertEqual(len(occurrences),
-                len(rule.between(now, end, inc=True)))
+                len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.WEEKLY, interval=2))))
 
     def test_save_fails_when_start_is_greater_then_end(self):
         now = datetime.datetime.now()
         event = OccurrenceSeries(start=now+datetime.timedelta(hours=1), end=now,
             end_recurring_period=now+datetime.timedelta(weeks=54), rule='HOURLY')
         self.assertRaises(ValidationError, lambda: event.full_clean())
+

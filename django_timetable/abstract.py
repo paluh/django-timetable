@@ -1,7 +1,7 @@
 from django.db import models
 
 class AbstractMixin(object):
-    _classcache = {}
+    _cls_counter = 0
 
     @classmethod
     def contribute(cls):
@@ -14,9 +14,6 @@ class AbstractMixin(object):
             '__module__': cls.__module__,
             'Meta': type('Meta', (), {'abstract': True}),
         })
-        key = (args, tuple(kwargs.items()))
-        if not key in cls._classcache:
-            clsname = ('%s%x' % (cls.__name__, hash(key))) \
-                    .replace('-', '_')
-            cls._classcache[key] = type(clsname, (cls, ), attrs)
-        return cls._classcache[key]
+        cls._cls_counter += 1
+        clsname = '%s_%i' % (cls.__name__, cls._cls_counter)
+        return type(clsname, (cls, ), attrs)
