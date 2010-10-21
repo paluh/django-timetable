@@ -5,7 +5,8 @@ h2. OVERVIEW
 “What does this application do?”
 
 * It implements recurring occurrences series (for example: create series of 'event' which occurres every monday for next two months).
-* It uses abstract models factories (http://gist.github.com/584106) so you can easly subclass given models without any overhead or generic relations
+* It allows you to define own recurrence rules based on dateutil rrule definitions.
+* It uses abstract models factories (http://gist.github.com/584106) so you can easly subclass given models without any overhead or generic relations.
 
 .. what doesn't?
 
@@ -13,5 +14,5 @@ It doesn't implement any ,,Event'' class or ,,Calendar'' class  - it's up to you
 
 h2. USAGE
 
-I'm going to implement exmple app soon, but now you have to look into test.py if you want see any example.
+I'm going to implement exmple app soon. Till then you have to look into test.py if you want to see any example.
 
