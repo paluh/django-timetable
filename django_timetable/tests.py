@@ -2,6 +2,7 @@ import datetime
 from dateutil import rrule
 
 from django.core.exceptions import ValidationError
+from django import forms
 from django.db import models
 from django.test import TestCase
 
@@ -44,6 +45,46 @@ class Fields(TestCase):
     def test_once_rrule_value(self):
         o = OccurrenceSeries(rule='ONCE')
         self.assertEqual(o.rule, None)
+
+    def test_modelform_validation_for_rrule_value(self):
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = OccurrenceSeries
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': 'WEEKLY'
+        })
+        self.assertTrue(form.is_valid())
+
+    def test_modelform_save_for_rrule_value(self):
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = OccurrenceSeries
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': 'WEEKLY'
+        })
+        form.is_valid()
+        series = form.save()
+        series = OccurrenceSeries.objects.get(id=series.id)
+        self.assertEqual(series.rule.params['freq'], rrule.WEEKLY)
+
+    def test_modelform_save_for_rrule_value(self):
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = OccurrenceSeries
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': 'UNKNOWN'
+        })
+        self.assertFalse(form.is_valid())
+        self.assertTrue('rule' in form.errors)
 
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):

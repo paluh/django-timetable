@@ -1,6 +1,7 @@
 from dateutil import rrule
 
 from django.db import models
+from django import forms
 from django.utils.translation import ugettext, ugettext_lazy as _
 
 class RruleField(models.CharField):
@@ -8,8 +9,6 @@ class RruleField(models.CharField):
     __metaclass__ = models.SubfieldBase
 
     class RruleWrapper(object):
-        #it's imposible to have rrule defined without dtstart so this is wrapper
-        #which simplifies rrule.between method usage
         def __init__(self, **rrule_params):
             self.params = rrule_params
 
@@ -22,7 +21,7 @@ class RruleField(models.CharField):
             return list(rrule.rrule(**params))
 
         def __eq__(self, other):
-            return other is not None and self.params == other.params
+            return isinstance(other, self.__class__) and self.params == other.params
 
     def __init__(self, *args, **kwargs):
         choices = kwargs.get('choices', None)
@@ -32,11 +31,10 @@ class RruleField(models.CharField):
         self.name2rrule = {}
         for choice in choices:
             if len(choice) == 3:
-                self.name2rrule[choice[0]] = RruleField.RruleWrapper(**choice[2])
+                self.name2rrule[choice[0]] = RruleField.RruleWrapper( **choice[2])
                 parsed_choices.append((choice[0], choice[1]))
             elif hasattr(rrule, choice[0]):
-                rule = RruleField.RruleWrapper(freq=getattr(rrule, choice[0]))
-                self.name2rrule[choice[0]] = rule
+                self.name2rrule[choice[0]] = RruleField.RruleWrapper(freq=getattr(rrule, choice[0]))
                 parsed_choices.append(choice)
             else:
                 parsed_choices.append(choice)
@@ -55,5 +53,15 @@ class RruleField(models.CharField):
         return self.get_prep_value(value)
 
     def to_python(self, value):
+        if isinstance(value, RruleField.RruleWrapper):
+            return value
         return self.name2rrule.get(value, None)
+
+    def validate(self, value, model_instance):
+        # coerce value back to a string to validate correctly
+        return super(RruleField, self).validate(self.get_prep_value(value), model_instance)
+
+    def run_validators(self, value):
+        # coerce value back to a string to validate correctly
+        return super(RruleField, self).run_validators(self.get_prep_value(value))
 
