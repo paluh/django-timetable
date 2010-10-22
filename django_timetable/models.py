@@ -23,7 +23,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
     #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
     RULES = (
-        ('ONCE', _('Once')),
+        # '' is only allowed empty value
+        ('', _('Once')),
         ('YEARLY', _('Yearly')),
         ('MONTHLY', _('Monthly')),
         ('WEEKLY', _('Weekly')),

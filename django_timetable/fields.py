@@ -9,7 +9,13 @@ class RruleField(models.CharField):
     __metaclass__ = models.SubfieldBase
 
     class RruleWrapper(object):
-        def __init__(self, **rrule_params):
+        def __init__(self, name, **rrule_params):
+            self.name = name
+            #validate params
+            try:
+                rrule.rrule(**rrule_params)
+            except TypeError:
+                raise ValueError("Could ont apply your params to rrule!")
             self.params = rrule_params
 
         def __call__(self, dtstart, until):
@@ -31,22 +37,22 @@ class RruleField(models.CharField):
         self.name2rrule = {}
         for choice in choices:
             if len(choice) == 3:
-                self.name2rrule[choice[0]] = RruleField.RruleWrapper( **choice[2])
+                self.name2rrule[choice[0]] = RruleField.RruleWrapper(choice[0], **choice[2])
                 parsed_choices.append((choice[0], choice[1]))
-            elif hasattr(rrule, choice[0]):
-                self.name2rrule[choice[0]] = RruleField.RruleWrapper(freq=getattr(rrule, choice[0]))
+            elif choice[0] == '':
                 parsed_choices.append(choice)
             else:
+                self.name2rrule[choice[0]] = RruleField.RruleWrapper(choice[0], freq=getattr(rrule, choice[0]))
                 parsed_choices.append(choice)
+
         kwargs['choices'] = parsed_choices
         super(RruleField, self).__init__(*args, **kwargs)
 
     def get_prep_value(self, value):
         if isinstance(value, basestring):
             return value
-        for k,v in self.name2rrule.items():
-            if v == value:
-                return k
+        if isinstance(value, RruleField.RruleWrapper):
+            return value.name
         return ''
 
     def get_db_prep_save(self, value, connection=None):

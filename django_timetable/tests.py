@@ -10,7 +10,7 @@ from .models import OccurrenceSeriesFactory, OccurrenceFactory
 from .fields import RruleField
 
 RRULES_CHOICES = (
-    ('ONCE', 'once',),
+    ('', 'once',),
     ('HOURLY', 'hourly'),
     ('DAILY', 'daily',),
     ('WEEKLY', 'weekly'),
@@ -40,7 +40,7 @@ class Fields(TestCase):
         now = datetime.datetime.now()
         o = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
-        self.assertEqual(o.rule, RruleField.RruleWrapper(freq=rrule.WEEKLY, interval=2))
+        self.assertEqual(o.rule, RruleField.RruleWrapper('EVERY_TWO_WEEKS', freq=rrule.WEEKLY, interval=2))
 
     def test_once_rrule_value(self):
         o = OccurrenceSeries(rule='ONCE')
@@ -58,6 +58,20 @@ class Fields(TestCase):
         })
         self.assertTrue(form.is_valid())
 
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': 'UNKNOWN'
+        })
+        self.assertFalse(form.is_valid())
+        self.assertTrue('rule' in form.errors)
+
+    def test_incorrect_rrule_choice(self):
+        self.assertRaises(AttributeError, lambda: OccurrenceSeriesFactory.construct(rule_choices=(('UNKNOWN', u'unkown rule'),)))
+
+    def test_incorrect_rrule_choice(self):
+        self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rule_choices=(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)))
+
     def test_modelform_save_for_rrule_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
@@ -73,7 +87,7 @@ class Fields(TestCase):
         series = OccurrenceSeries.objects.get(id=series.id)
         self.assertEqual(series.rule.params['freq'], rrule.WEEKLY)
 
-    def test_modelform_save_for_rrule_value(self):
+    def test_modelform_save_for_custom_rrule_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
                 model = OccurrenceSeries
@@ -81,10 +95,13 @@ class Fields(TestCase):
         form = OccurrenceSeriesForm(data={'start': start,
                 'end': start+datetime.timedelta(hours=1),
                 'end_recurring_period': start+datetime.timedelta(weeks=1),
-                'rule': 'UNKNOWN'
+                'rule': 'EVERY_TWO_WEEKS'
         })
-        self.assertFalse(form.is_valid())
-        self.assertTrue('rule' in form.errors)
+        form.is_valid()
+        series = form.save()
+        series = OccurrenceSeries.objects.get(id=series.id)
+        self.assertEqual(series.rule.params['freq'], rrule.WEEKLY)
+        self.assertEqual(series.rule.params['interval'], 2)
 
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):

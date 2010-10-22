@@ -9,7 +9,7 @@ from django.test import TestCase
 from .models import SequentialOccurrenceSeriesFactory, SequentialOccurrenceFactory
 
 RRULES_CHOICES = (
-    ('ONCE', 'once',),
+    ('', 'once',),
     ('HOURLY', 'hourly'),
     ('DAILY', 'daily',),
     ('WEEKLY', 'weekly'),
