@@ -31,10 +31,22 @@ class RruleField(models.CharField):
 
         def __eq__(self, other):
             return isinstance(other, self.__class__) and self.params == other.params
-
     def __init__(self, *args, **kwargs):
-        choices = kwargs.pop('choices',
-                (('', _('Once')), ('YEARLY', _('Yearly')), ('MONTHLY', _('Monthly')), ('WEEKLY', _('Weekly')), ('DAILY', _('Daily')),)
+        #you can define rrules consts by:
+        #  * creating tuple which contains known interval value name from rrule module,
+        #       for example: rrule.WEEKLY -> ('WEEKLY', '<display value>')
+        #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
+        #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
+        #  ** there is only one etmpy rule which value should be: ''
+        choices = kwargs.pop('choices', None) or (
+            # '' is only allowed empty value
+            ('', _('Once')),
+            ('DAILY', _('Daily')),
+            ('WEEKLY', _('Weekly')),
+            #example of more complicated rule
+            ('EVERY_TWO_WEEKS', _('Every two weeks'), {'freq': rrule.WEEKLY, 'interval': 2}),
+            ('YEARLY', _('Yearly')),
+            ('MONTHLY', _('Monthly')),
         )
         parsed_choices = []
         self.name2rrule = {}
@@ -49,12 +61,9 @@ class RruleField(models.CharField):
                 parsed_choices.append(choice)
 
         kwargs['choices'] = parsed_choices
-        defaults = {
-            'max_length': MAX_RRULE_LENGTH,
-            'default': 0
-        }
-        defaults.update(kwargs)
-        super(RruleField, self).__init__(*args, **defaults)
+        kwargs['default'] = kwargs['default'] if kwargs.get('default', None) is not None else parsed_choices[0]
+        kwargs['max_length'] = max([MAX_RRULE_LENGTH] + [len(x[0]) for x in parsed_choices])
+        super(RruleField, self).__init__(*args, **kwargs)
 
     def get_prep_value(self, value):
         if isinstance(value, basestring):

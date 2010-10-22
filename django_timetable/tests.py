@@ -17,7 +17,7 @@ RRULES_CHOICES = (
     ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
 )
 
-class OccurrenceSeries(OccurrenceSeriesFactory.construct(rule_choices=RRULES_CHOICES)):
+class OccurrenceSeries(OccurrenceSeriesFactory.construct(rrule_choices=RRULES_CHOICES)):
     pass
 
 class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeries)):
@@ -67,10 +67,10 @@ class Fields(TestCase):
         self.assertTrue('rule' in form.errors)
 
     def test_incorrect_rrule_choice(self):
-        self.assertRaises(AttributeError, lambda: OccurrenceSeriesFactory.construct(rule_choices=(('UNKNOWN', u'unkown rule'),)))
+        self.assertRaises(AttributeError, lambda: OccurrenceSeriesFactory.construct(rrule_choices=(('UNKNOWN', u'unkown rule'),)))
 
     def test_incorrect_rrule_choice(self):
-        self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rule_choices=(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)))
+        self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rrule_choices=(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)))
 
     def test_modelform_save_for_rrule_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):

@@ -16,8 +16,9 @@ class CalendarOccurrenceSeriesFactory(OccurrenceSeriesFactory):
         abstract = True
 
     @classmethod
-    def contribute(cls, rule_choices=None, default_rule=0, calendar=None):
-        fields = super(CalendarOccurrenceSeriesFactory, cls).contribute(rule_choices, default_rule)
+    def contribute(cls, **kwargs):
+        calendar = kwargs.pop('calendar', None)
+        fields = super(CalendarOccurrenceSeriesFactory, cls).contribute(**kwargs)
 
         if not calendar:
             raise ValueError("Sequential events requires calendar model.")

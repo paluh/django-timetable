@@ -17,32 +17,10 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     class Meta:
         abstract = True
 
-    #you can define rrules consts by:
-    #  * creating tuple which contains known interval value name from rrule module,
-    #       for example: rrule.WEEKLY -> ('WEEKLY', '<display value>')
-    #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
-    #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
-    RULES = (
-        # '' is only allowed empty value
-        ('', _('Once')),
-        ('YEARLY', _('Yearly')),
-        ('MONTHLY', _('Monthly')),
-        ('WEEKLY', _('Weekly')),
-        #example of more complicated rule
-        ('EVERY_TWO_WEEKS', _('Every two weeks'), {'freq': rrule.WEEKLY, 'interval': 2}),
-        ('DAILY', _('Daily')),
-        ('HOURLY', _('Hourly')),
-        ('MINUTELY', _('Minutely')),
-        ('SECONDLY', _('Secondly'))
-    )
+    #for examples of rule choices look into fields.py
     @classmethod
-    def contribute(cls, rule_choices=RULES, default_rule=0):
-        rule_choices = rule_choices or cls.RULES
-        max_length = max([len(rule_choice[0]) for rule_choice in rule_choices])
-        fields = {
-            'rule': RruleField(choices=rule_choices,
-                max_length=max_length, default=rule_choices[default_rule][0])
-        }
+    def contribute(cls, rrule_choices=None, rrule_default=None):
+        fields = {'rule': RruleField(choices=rrule_choices, default=rrule_default)}
         return fields
 
     def get_occurrences(self, start=None, end=None, commit=False, defaults=None):
