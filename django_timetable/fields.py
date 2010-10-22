@@ -1,8 +1,11 @@
 from dateutil import rrule
 
+from django.conf import settings
 from django.db import models
 from django import forms
 from django.utils.translation import ugettext, ugettext_lazy as _
+
+MAX_RRULE_LENGTH = getattr(settings, "MAX_RRULE_LENGTH", 128)
 
 class RruleField(models.CharField):
     description = _("Time recurrency rule (for example: 'weekly', 'daily').")
@@ -30,9 +33,9 @@ class RruleField(models.CharField):
             return isinstance(other, self.__class__) and self.params == other.params
 
     def __init__(self, *args, **kwargs):
-        choices = kwargs.get('choices', None)
-        if not choices:
-            raise AttributeError('You have to pass rrule choices to this field!')
+        choices = kwargs.pop('choices',
+                (('', _('Once')), ('YEARLY', _('Yearly')), ('MONTHLY', _('Monthly')), ('WEEKLY', _('Weekly')), ('DAILY', _('Daily')),)
+        )
         parsed_choices = []
         self.name2rrule = {}
         for choice in choices:
@@ -46,7 +49,12 @@ class RruleField(models.CharField):
                 parsed_choices.append(choice)
 
         kwargs['choices'] = parsed_choices
-        super(RruleField, self).__init__(*args, **kwargs)
+        defaults = {
+            'max_length': MAX_RRULE_LENGTH,
+            'default': 0
+        }
+        defaults.update(kwargs)
+        super(RruleField, self).__init__(*args, **defaults)
 
     def get_prep_value(self, value):
         if isinstance(value, basestring):
@@ -71,3 +79,14 @@ class RruleField(models.CharField):
         # coerce value back to a string to validate correctly
         return super(RruleField, self).run_validators(self.get_prep_value(value))
 
+try:
+    from south.modelsinspector import add_introspection_rules
+
+    #be careful when migrating models with rrule - if your choices value is not in
+    #default set (look into RruleField.__init__) occurrence.rule will be None!
+    add_introspection_rules(
+        rules=[((RruleField, ), [], {"max_length": ["max_length", { "default": MAX_RRULE_LENGTH }]})],
+        patterns=['django_timetable\.fields\.']
+    )
+except ImportError:
+    pass
