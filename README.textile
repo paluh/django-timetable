@@ -12,6 +12,8 @@ h2. OVERVIEW
 
 It doesn't implement any ,,Event'' class or ,,Calendar'' class  - it's up to you how you define calendar (it can be User or any other object) or how your Event object looks like. Because all 'models' in this aplication are based on abstract class factory you can easly subclass them in very flexible manner.
 
+This application is loosly inspired on django-schedule app, but has LESS features :-)
+
 h2. USAGE
 
 I'm going to implement exmple app soon. Till then you have to look into test.py if you want to see any example.

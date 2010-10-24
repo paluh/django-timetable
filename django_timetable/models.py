@@ -10,7 +10,7 @@ from .fields import RruleField
 
 class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'))
-    end = models.DateTimeField(_('end'),help_text=_('The end time must be later than the start time.'))
+    end = models.DateTimeField(_('end'))
     end_recurring_period = models.DateTimeField(_('end recurring period'), blank=True, null=True,
             help_text=_('This date is ignored for one time only events.'))
 
@@ -20,7 +20,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     #for examples of rule choices look into fields.py
     @classmethod
     def contribute(cls, rrule_choices=None, rrule_default=None):
-        fields = {'rule': RruleField(choices=rrule_choices, default=rrule_default)}
+        fields = {'rule': RruleField(choices=rrule_choices, default=rrule_default, blank=any(not x for x in zip(*rrule_choices)[0]))}
         return fields
 
     def get_occurrences(self, start=None, end=None, commit=False, defaults=None):
@@ -60,15 +60,15 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
 class OccurrenceFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'), blank=True)
     end = models.DateTimeField(_('end'), blank=True)
-    original_start = models.DateTimeField(_('original start'))
-    original_end = models.DateTimeField(_('original end'))
+    original_start = models.DateTimeField(_('original start'), editable=False)
+    original_end = models.DateTimeField(_('original end'), editable=False)
 
     class Meta:
         abstract = True
 
     @classmethod
     def contribute(cls, event):
-        return {'event': models.ForeignKey(event, related_name='occurrences')}
+        return {'event': models.ForeignKey(event, related_name='occurrences', editable=False)}
 
     def clean(self):
         if self.start and self.end and self.start > self.end:
