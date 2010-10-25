@@ -20,7 +20,11 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     #for examples of rule choices look into fields.py
     @classmethod
     def contribute(cls, rrule_choices=None, rrule_default=None):
-        fields = {'rule': RruleField(choices=rrule_choices, default=rrule_default, blank=any(not x for x in zip(*rrule_choices)[0]))}
+        fields = {}
+        if rrule_choices:
+            fields['rule'] = RruleField(choices=rrule_choices, default=rrule_default, blank=any(not x for x in zip(*rrule_choices)[0]))
+        else:
+            fields['rule'] = RruleField()
         return fields
 
     def get_occurrences(self, start=None, end=None, commit=False, defaults=None):
@@ -42,8 +46,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
             db_starts = []
             for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
                 db_starts.extend(self.occurrences.filter(original_start__in=slice).values_list('original_start', flat=True))
-            missed = filter(lambda start: start not in db_starts, starts)
-            for s in missed:
+            missing = filter(lambda start: start not in db_starts, starts)
+            for s in missing:
                 result.append(self.occurrences.model(event=self, original_start=s, start=s, original_end=s+delta, end=s+delta, **defaults))
             if commit:
                 for occurrence in result:
