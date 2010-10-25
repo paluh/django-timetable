@@ -21,7 +21,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     @classmethod
     def contribute(cls, rrule_choices=None, rrule_default=None):
         fields = {}
-        if rrule_choices:
+        if rrule_choices is not None:
             fields['rule'] = RruleField(choices=rrule_choices, default=rrule_default, blank=any(not x for x in zip(*rrule_choices)[0]))
         else:
             fields['rule'] = RruleField()
