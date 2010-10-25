@@ -40,7 +40,8 @@ class Fields(TestCase):
         now = datetime.datetime.now()
         o = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
-        self.assertEqual(o.rule, RruleField.RruleWrapper('EVERY_TWO_WEEKS', freq=rrule.WEEKLY, interval=2))
+        self.assertEqual(list(o.rule(dtstart=o.start, until=o.end_recurring_period)),
+                list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period, freq=rrule.WEEKLY, interval=2)))
 
     def test_once_rrule_value(self):
         o = OccurrenceSeries(rule='ONCE')
@@ -85,7 +86,7 @@ class Fields(TestCase):
         form.is_valid()
         series = form.save()
         series = OccurrenceSeries.objects.get(id=series.id)
-        self.assertEqual(series.rule.params['freq'], rrule.WEEKLY)
+        self.assertEqual(series.rule.name, 'WEEKLY')
 
     def test_modelform_save_for_custom_rrule_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):
@@ -100,8 +101,7 @@ class Fields(TestCase):
         form.is_valid()
         series = form.save()
         series = OccurrenceSeries.objects.get(id=series.id)
-        self.assertEqual(series.rule.params['freq'], rrule.WEEKLY)
-        self.assertEqual(series.rule.params['interval'], 2)
+        self.assertEqual(series.rule.name, 'EVERY_TWO_WEEKS')
 
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):

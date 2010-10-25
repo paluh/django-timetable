@@ -1,4 +1,5 @@
 from dateutil import rrule
+from functools import partial
 
 from django.conf import settings
 from django.db import models
@@ -8,38 +9,20 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 MAX_RRULE_LENGTH = getattr(settings, "MAX_RRULE_LENGTH", 128)
 
 class RruleField(models.CharField):
+    """RruleField is callable - it's curried rrule.rrule function which expects dtstart and until kwargs."""
+
     description = _("Time recurrency rule (for example: 'weekly', 'daily').")
     __metaclass__ = models.SubfieldBase
 
-    class RruleWrapper(object):
-        def __init__(self, name, **rrule_params):
-            self.name = name
-            #validate params
-            try:
-                rrule.rrule(**rrule_params)
-            except TypeError:
-                raise ValueError("Could ont apply your params to rrule!")
-            self.params = rrule_params
-
-        def __call__(self, dtstart, until):
-            params = self.params.copy()
-            params.update({
-                'dtstart': dtstart,
-                'until': until,
-            })
-            return list(rrule.rrule(**params))
-
-        def __eq__(self, other):
-            return isinstance(other, self.__class__) and self.params == other.params
     def __init__(self, *args, **kwargs):
         #you can define rrules consts by:
         #  * creating tuple which contains known interval value name from rrule module,
         #       for example: rrule.WEEKLY -> ('WEEKLY', '<display value>')
         #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
         #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
-        #  ** there is only one etmpy rule which value should be: ''
+        #
+        #Note: there is only one etmpy rule allowed and it value should be: ''
         choices = kwargs.pop('choices', None) or (
-            # '' is only allowed empty value
             ('', _('Once')),
             ('DAILY', _('Daily')),
             ('WEEKLY', _('Weekly')),
@@ -52,12 +35,12 @@ class RruleField(models.CharField):
         self.name2rrule = {}
         for choice in choices:
             if len(choice) == 3:
-                self.name2rrule[choice[0]] = RruleField.RruleWrapper(choice[0], **choice[2])
+                self.name2rrule[choice[0]] = self._get_rrule(choice[0], **choice[2])
                 parsed_choices.append((choice[0], choice[1]))
             elif choice[0] == '':
                 parsed_choices.append(choice)
             else:
-                self.name2rrule[choice[0]] = RruleField.RruleWrapper(choice[0], freq=getattr(rrule, choice[0]))
+                self.name2rrule[choice[0]] = self._get_rrule(choice[0], freq=getattr(rrule, choice[0]))
                 parsed_choices.append(choice)
 
         kwargs['choices'] = parsed_choices
@@ -65,20 +48,30 @@ class RruleField(models.CharField):
         kwargs['max_length'] = max([MAX_RRULE_LENGTH] + [len(x[0]) for x in parsed_choices])
         super(RruleField, self).__init__(*args, **kwargs)
 
+    def _get_rrule(self, name, **params):
+        try:
+            #validate params
+            rrule.rrule(**params)
+        except TypeError:
+            raise ValueError("Could ont apply your params to rrule!")
+        rule = partial(rrule.rrule, **params)
+        rule.name = name
+        return rule
+
     def get_prep_value(self, value):
         if isinstance(value, basestring):
             return value
-        if isinstance(value, RruleField.RruleWrapper):
-            return value.name
-        return ''
+        if value is None:
+            return ''
+        return value.name
 
     def get_db_prep_save(self, value, connection=None):
         return self.get_prep_value(value)
 
     def to_python(self, value):
-        if isinstance(value, RruleField.RruleWrapper):
-            return value
-        return self.name2rrule.get(value, None)
+        if isinstance(value, basestring):
+            return self.name2rrule.get(value, None)
+        return value
 
     def validate(self, value, model_instance):
         # coerce value back to a string to validate correctly

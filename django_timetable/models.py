@@ -41,7 +41,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         start, end = start.replace(microsecond=0), end.replace(microsecond=0)
         delta = self.end - self.start
         if self.rule != None:
-            starts = self.rule(start, end)
+            starts = list(self.rule(dtstart=start, until=end))
         else:
             starts = [self.start]
         #this prevents 'too many SQL variables' raised by sqlite
