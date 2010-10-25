@@ -9,7 +9,10 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 MAX_RRULE_LENGTH = getattr(settings, "MAX_RRULE_LENGTH", 128)
 
 class RruleField(models.CharField):
-    """RruleField is callable - it's curried rrule.rrule function which expects dtstart and until kwargs."""
+    """
+        RruleField is callable - it's curried rrule.rrule function which expects dtstart and until kwargs.
+        Look into django_timetable.models for example.
+    """
 
     description = _("Time recurrency rule (for example: 'weekly', 'daily').")
     __metaclass__ = models.SubfieldBase
@@ -54,7 +57,7 @@ class RruleField(models.CharField):
             rrule.rrule(**params)
         except TypeError:
             raise ValueError("Could ont apply your params to rrule!")
-        rule = partial(rrule.rrule, **params)
+        rule = lambda **kwargs: list(partial(rrule.rrule, **params)(**kwargs))
         rule.name = name
         return rule
 
