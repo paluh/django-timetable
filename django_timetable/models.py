@@ -8,11 +8,14 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 from .abstract import AbstractMixin
 from .fields import RruleField
 
+
 class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'))
     end = models.DateTimeField(_('end'))
-    end_recurring_period = models.DateTimeField(_('end recurring period'), blank=True, null=True,
-            help_text=_('This date is ignored for one time only events.'))
+    end_recurring_period = models.DateTimeField(
+        _('end recurring period'), blank=True, null=True,
+        help_text=_('This date is ignored for one time only events.')
+    )
 
     class Meta:
         abstract = True
@@ -22,14 +25,18 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     def contribute(cls, rrule_choices=None, rrule_default=None):
         fields = {}
         if rrule_choices is not None:
-            fields['rule'] = RruleField(choices=rrule_choices, default=rrule_default, blank=any(not x for x in zip(*rrule_choices)[0]))
+            fields['rule'] = RruleField(choices=rrule_choices,
+                default=rrule_default,
+                blank=any(not x for x in zip(*rrule_choices)[0]))
         else:
             fields['rule'] = RruleField()
         return fields
 
-    def get_occurrences(self, start=None, end=None, commit=False, defaults=None):
+    def get_occurrences(self, start=None, end=None,
+                                commit=False, defaults=None):
         defaults = defaults or {}
-        start, end = start or self.start, end or self.end_recurring_period or self.end
+        start, end = start or self.start, end \
+                or self.end_recurring_period or self.end
         #FIXME: dateutil rrule implemetation ignores microseconds
         start, end = start.replace(microsecond=0), end.replace(microsecond=0)
         delta = self.end - self.start
@@ -39,16 +46,23 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
             starts = [self.start]
         #this prevents 'too many SQL variables' raised by sqlite
         count = 0
-        for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
+        max_sql_vars = getattr(settings, 'MAX_SQL_VARS', 500)
+        for slice in map(None, *(iter(starts),) * max_sql_vars):
             count += self.occurrences.filter(original_start__in=slice).count()
         result = list(self.occurrences.filter(start__gte=start, start__lt=end))
         if count != len(starts):
             db_starts = []
-            for slice in map(None, *(iter(starts),) * getattr(settings, 'MAX_SQL_VARS', 500)):
-                db_starts.extend(self.occurrences.filter(original_start__in=slice).values_list('original_start', flat=True))
+            for slice in map(None, *(iter(starts),) * max_sql_vars):
+                db_starts.extend(self.occurrences \
+                        .filter(original_start__in=slice) \
+                        .values_list('original_start', flat=True))
             missing = filter(lambda start: start not in db_starts, starts)
             for s in missing:
-                result.append(self.occurrences.model(event=self, original_start=s, start=s, original_end=s+delta, end=s+delta, **defaults))
+                result.append(self.occurrences.model(
+                    event=self,
+                    original_start=s, start=s,
+                    original_end=s+delta, end=s+delta, **defaults)
+                )
             if commit:
                 for occurrence in result:
                     occurrence.save()
@@ -61,6 +75,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         if self.end_recurring_period is None and self.rule != None:
             raise ValidationError("You have to pass end period for recurring series!")
 
+
 class OccurrenceFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'), blank=True)
     end = models.DateTimeField(_('end'), blank=True)
@@ -72,7 +87,12 @@ class OccurrenceFactory(models.Model, AbstractMixin):
 
     @classmethod
     def contribute(cls, event):
-        return {'event': models.ForeignKey(event, related_name='occurrences', editable=False)}
+        return {
+            'event': models.ForeignKey(
+                event, related_name='occurrences',
+                editable=False
+            )
+        }
 
     def clean(self):
         if self.start and self.end and self.start > self.end:
