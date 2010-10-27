@@ -57,7 +57,7 @@ class RruleField(models.CharField):
             rrule.rrule(**params)
         except TypeError:
             raise ValueError("Could ont apply your params to rrule!")
-        rule = lambda **kwargs: list(partial(rrule.rrule, **params)(**kwargs))
+        rule = partial(rrule.rrule, **params)
         rule.name = name
         return rule
 

@@ -3,7 +3,7 @@ from django.conf import settings
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils.translation import ugettext, ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _
 
 from .abstract import AbstractMixin
 from .fields import RruleField
@@ -25,9 +25,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     def contribute(cls, rrule_choices=None, rrule_default=None):
         fields = {}
         if rrule_choices is not None:
-            fields['rule'] = RruleField(choices=rrule_choices,
-                default=rrule_default,
-                blank=any(not x for x in zip(*rrule_choices)[0]))
+            fields['rule'] = RruleField(choices=rrule_choices, default=rrule_default)
         else:
             fields['rule'] = RruleField()
         return fields
@@ -41,7 +39,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         start, end = start.replace(microsecond=0), end.replace(microsecond=0)
         delta = self.end - self.start
         if self.rule != None:
-            starts = self.rule(dtstart=start, until=end)
+            starts = list(self.rule(dtstart=start, until=end))
         else:
             starts = [self.start]
         #this prevents 'too many SQL variables' raised by sqlite
