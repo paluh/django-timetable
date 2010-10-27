@@ -24,9 +24,7 @@ class RruleField(models.CharField):
         #  * creating tuple of three values ('<db_const>', '<display value>', <dict of dateutil.rrule.rrule init parameters>),
         #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
         #
-        #Note: there is only one etmpy rule allowed and it value should be: ''
         choices = kwargs.pop('choices', None) or (
-            ('', _('Once')),
             ('DAILY', _('Daily')),
             ('WEEKLY', _('Weekly')),
             #example of more complicated rule

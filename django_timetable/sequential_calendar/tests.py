@@ -15,7 +15,7 @@ RRULES_CHOICES = (
     ('WEEKLY', 'weekly'),
     ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
 )
-class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User, rrule_choices=RRULES_CHOICES)):
+class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User, rrule_kwargs={'choices':RRULES_CHOICES})):
     pass
 
 class Occurrence(SequentialOccurrenceFactory.construct(event=OccurrenceSeries)):

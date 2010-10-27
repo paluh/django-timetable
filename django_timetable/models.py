@@ -22,12 +22,9 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
 
     #for examples of rule choices look into fields.py
     @classmethod
-    def contribute(cls, rrule_choices=None, rrule_default=None):
-        fields = {}
-        if rrule_choices is not None:
-            fields['rule'] = RruleField(choices=rrule_choices, default=rrule_default)
-        else:
-            fields['rule'] = RruleField()
+    def contribute(cls, rrule_kwargs=None):
+        rrule_kwargs = rrule_kwargs or {}
+        fields = {'rule': RruleField(**rrule_kwargs)}
         return fields
 
     def get_occurrences(self, start=None, end=None,
