@@ -4,6 +4,7 @@ from functools import partial
 from django.conf import settings
 from django.db import models
 from django import forms
+from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.translation import ugettext, ugettext_lazy as _
 
 MAX_RRULE_LENGTH = getattr(settings, "MAX_RRULE_LENGTH", 128)
@@ -25,6 +26,7 @@ class RruleField(models.CharField):
         #       for example: ('EVERY_TWO_WEEKS', '<display value>', {'freq': rrule.WEEKLY, 'interval': 2})
         #
         choices = kwargs.pop('choices', None) or (
+            ('', _('Once')),
             ('DAILY', _('Daily')),
             ('WEEKLY', _('Weekly')),
             #example of more complicated rule
@@ -33,21 +35,31 @@ class RruleField(models.CharField):
             ('MONTHLY', _('Monthly')),
         )
         parsed_choices = []
+        self.blank_choice = BLANK_CHOICE_DASH
         self.name2rrule = {}
         for choice in choices:
             if len(choice) == 3:
                 self.name2rrule[choice[0]] = self._get_rrule(choice[0], **choice[2])
                 parsed_choices.append((choice[0], choice[1]))
-            elif choice[0] == '':
-                parsed_choices.append(choice)
+            elif not choice[0]:
+                kwargs['blank'] = True
+                self.blank_choice = [(choice[0], choice[1])]
             else:
                 self.name2rrule[choice[0]] = self._get_rrule(choice[0], freq=getattr(rrule, choice[0]))
                 parsed_choices.append(choice)
 
         kwargs['choices'] = parsed_choices
-        kwargs['default'] = kwargs['default'] if kwargs.get('default', None) is not None else parsed_choices[0]
+        kwargs['default'] = kwargs['default'] if kwargs.get('default', None) is not None else (parsed_choices and parsed_choices[0] or None)
         kwargs['max_length'] = max([MAX_RRULE_LENGTH] + [len(x[0]) for x in parsed_choices])
         super(RruleField, self).__init__(*args, **kwargs)
+
+    def get_choices(self, *args, **kwargs):
+        kwargs['blank_choice'] = kwargs.get('blank_choice', self.blank_choice)
+        return super(RruleField, self).get_choices(*args, **kwargs)
+
+    def get_flatchoices(self, *args, **kwargs):
+        kwargs['blank_choice'] = kwargs.get('blank_choice', self.blank_choice)
+        return super(RruleField, self).get_flatchoices(*args, **kwargs)
 
     def _get_rrule(self, name, **params):
         try:

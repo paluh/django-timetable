@@ -73,6 +73,34 @@ class Fields(TestCase):
     def test_incorrect_rrule_choice(self):
         self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)}))
 
+    def test_blank_choice_with_custom_display(self):
+        custom_display = u'custom display'
+        class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', custom_display),('WEEKLY', 'weekly'))})):
+            pass
+
+        s = SeriesWithCustomBlank()
+        s.rule = ''
+        self.assertEqual(len(s._meta.get_field('rule').get_choices()), 2)
+        self.assertTrue(s._meta.get_field('rule').blank)
+        self.assertTrue(custom_display in zip(*s._meta.get_field('rule').get_choices())[1])
+
+    def test_modelform_with_custom_blank_display_validation(self):
+        custom_display = u'custom display'
+        class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', custom_display),('WEEKLY', 'weekly'))})):
+            pass
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = SeriesWithCustomBlank
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': ''
+        })
+        form.is_valid()
+        series = form.save(commit=False)
+        self.assertEqual(series.rule, None)
+
     def test_modelform_save_for_rrule_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
@@ -102,6 +130,7 @@ class Fields(TestCase):
         series = form.save()
         series = OccurrenceSeries.objects.get(id=series.id)
         self.assertEqual(series.rule.name, 'EVERY_TWO_WEEKS')
+
 
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):
