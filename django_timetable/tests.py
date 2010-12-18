@@ -35,6 +35,10 @@ class OccurrenceWithRequiredField(OccurrenceFactory.construct(event=OccurrenceSe
     def __unicode__(self):
         return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
 
+CUSTOM_DISPLAY = u'custom display'
+class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', CUSTOM_DISPLAY),('WEEKLY', 'weekly'))})):
+    pass
+
 class Fields(TestCase):
     def test_custom_rrule_value(self):
         now = datetime.datetime.now()
@@ -74,20 +78,13 @@ class Fields(TestCase):
         self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)}))
 
     def test_blank_choice_with_custom_display(self):
-        custom_display = u'custom display'
-        class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', custom_display),('WEEKLY', 'weekly'))})):
-            pass
-
         s = SeriesWithCustomBlank()
         s.rule = ''
         self.assertEqual(len(s._meta.get_field('rule').get_choices()), 2)
         self.assertTrue(s._meta.get_field('rule').blank)
-        self.assertTrue(custom_display in zip(*s._meta.get_field('rule').get_choices())[1])
+        self.assertTrue(CUSTOM_DISPLAY in zip(*s._meta.get_field('rule').get_choices())[1])
 
     def test_modelform_with_custom_blank_display_validation(self):
-        custom_display = u'custom display'
-        class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', custom_display),('WEEKLY', 'weekly'))})):
-            pass
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
                 model = SeriesWithCustomBlank

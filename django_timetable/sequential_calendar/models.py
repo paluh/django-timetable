@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, F
+from django.utils.translation import ugettext_lazy as _
 
 from ..models import OccurrenceSeriesFactory, OccurrenceFactory
 from ..fields import RruleField
@@ -60,13 +61,13 @@ class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
             if index and index%(MAX_SQL_VARS/5)== 0:
                 if self.calendar.events.filter(query).exists():
                     raise TimeColisionError(
-                        message="Event occurrence has time collision with other occurrence from this calendar.",
+                        message=_("Event occurrence has time collision with other occurrence from this calendar."),
                         params=self.calendar.events.filter(query).order_by('start')[0],
                     )
                 query = Q()
         if self.calendar.events.filter(query).exists():
             raise TimeColisionError(
-                message="Event occurrence has time collision with other occurrence from this calendar.",
+                message=_("Event occurrence has time collision with other occurrence from this calendar."),
                 params=self.calendar.events.filter(query).order_by('start')[0],
             )
 
@@ -82,4 +83,4 @@ class SequentialOccurrenceFactory(OccurrenceFactory):
                         | (Q(start__lte=self.start) & Q(end__gt=self.start))
                     )
             if self.__class__.objects.filter(query).exists():
-                raise TimeColisionError("Occurrence has time collision with other occurrence from this calendar.")
+                raise TimeColisionError(_("Occurrence has time collision with other occurrence from this calendar."))

@@ -1,4 +1,3 @@
-from dateutil import rrule
 from django.conf import settings
 
 from django.core.exceptions import ValidationError
@@ -66,10 +65,11 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
 
     def clean(self):
         if self.start and self.end and self.start > self.end:
-            raise ValidationError("Start value can't be greater then end value.")
+            raise ValidationError(_("Start value can't be greater then end value."))
         if self.end_recurring_period is None and self.rule != None:
-            raise ValidationError("You have to pass end period for recurring series!")
-
+            raise ValidationError(_("You have to pass end period for recurring series."))
+        if self.start and self.end_recurring_period and self.start > self.end_recurring_period:
+            raise ValidationError(_("End recurring period can't be earlier than series start."))
 
 class OccurrenceFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'), blank=True)
@@ -91,7 +91,7 @@ class OccurrenceFactory(models.Model, AbstractMixin):
 
     def clean(self):
         if self.start and self.end and self.start > self.end:
-            raise ValidationError("Start value can't be greater then end value!")
+            raise ValidationError(_("Start value can't be greater then end value!"))
 
     def save(self, *args, **kwargs):
         if not self.start:

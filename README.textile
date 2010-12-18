@@ -18,3 +18,5 @@ h2. USAGE
 
 I'm going to implement exmple app soon. Till then you have to look into test.py if you want to see any example.
 
+h2. TESTING
+To test this app just add django_timetable to INSTALLED_APPS and run ./manage.py test django_timetable.
