@@ -61,6 +61,17 @@ class RruleField(models.CharField):
         kwargs['blank_choice'] = kwargs.get('blank_choice', self.blank_choice)
         return super(RruleField, self).get_flatchoices(*args, **kwargs)
 
+    def _get_flatchoices(self):
+        """Flattened version of choices tuple."""
+        flat = []
+        for choice, value in self.choices:
+            if isinstance(value, (list, tuple)):
+                flat.extend(value)
+            else:
+                flat.append((self.name2rrule[choice],value))
+        return flat
+    flatchoices = property(_get_flatchoices)
+
     def _get_rrule(self, name, **params):
         try:
             #validate params

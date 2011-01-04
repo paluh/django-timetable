@@ -128,7 +128,6 @@ class Fields(TestCase):
         series = OccurrenceSeries.objects.get(id=series.id)
         self.assertEqual(series.rule.name, 'EVERY_TWO_WEEKS')
 
-
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):
         start = datetime.datetime.now().replace(microsecond=0)

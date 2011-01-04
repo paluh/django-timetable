@@ -1,0 +1,108 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2011-01-04 01:09+0100\n"
+"PO-Revision-Date: 2011-01-04 02:37+0100\n"
+"Last-Translator: Tomasz Rybarczyk <paluho@gmail.com>\n"
+"Language-Team: polish <paluho@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Poedit-Language: Polish\n"
+"X-Poedit-Country: Poland\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+
+#: fields.py:18
+msgid "Time recurrency rule (for example: 'weekly', 'daily')."
+msgstr "Reguła powtarzalności (np. 'co tydzień')"
+
+#: fields.py:29
+msgid "Once"
+msgstr "Jednorazowo"
+
+#: fields.py:30
+msgid "Daily"
+msgstr "Codziennie"
+
+#: fields.py:31
+msgid "Weekly"
+msgstr "Co tydzień"
+
+#: fields.py:33
+msgid "Every two weeks"
+msgstr "Co dwa tygodnie"
+
+#: fields.py:34
+msgid "Yearly"
+msgstr "Co roku"
+
+#: fields.py:35
+msgid "Monthly"
+msgstr "Co miesiąc"
+
+#: models.py:12
+#: models.py:75
+msgid "start"
+msgstr "początek"
+
+#: models.py:13
+#: models.py:76
+msgid "end"
+msgstr "koniec"
+
+#: models.py:15
+msgid "end recurring period"
+msgstr "koniec okresu"
+
+#: models.py:16
+msgid "This date is ignored for one time only events."
+msgstr "Ta wartość jest ignorowana w przypadku jednorazowych wydarzeń."
+
+#: models.py:68
+msgid "Start value can't be greater then end value."
+msgstr "Początek musi być datą wcześniejszą niż koniec."
+
+#: models.py:70
+msgid "You have to pass end period for recurring series."
+msgstr ""
+
+#: models.py:72
+msgid "End recurring period can't be earlier than series start."
+msgstr ""
+
+#: models.py:77
+msgid "original start"
+msgstr "oryginalny początek"
+
+#: models.py:78
+msgid "original end"
+msgstr "oryginalny koniec"
+
+#: models.py:94
+msgid "Start value can't be greater then end value!"
+msgstr ""
+
+#: sequential_calendar/models.py:64
+#: sequential_calendar/models.py:70
+msgid "Event occurrence has time collision with other occurrence from this calendar."
+msgstr ""
+
+#: sequential_calendar/models.py:86
+msgid "Occurrence has time collision with other occurrence from this calendar."
+msgstr ""
+
+#: templates/django_timetable/schedule.html:6
+msgid "Schedule"
+msgstr "Kalendarz"
+
+#: templates/django_timetable/schedule.html:36
+msgid "No occurrences for this day"
+msgstr ""
+
