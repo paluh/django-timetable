@@ -23,8 +23,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     @classmethod
     def contribute(cls, rrule_kwargs=None):
         defaults = {'verbose_name': _('Rule')}
-        rrule_kwargs = defaults.update(rrule_kwargs or {})
-        fields = {'rule': RruleField(**rrule_kwargs)}
+        defaults.update(rrule_kwargs or {})
+        fields = {'rule': RruleField(**defaults)}
         return fields
 
     def get_occurrences(self, start=None, end=None,
