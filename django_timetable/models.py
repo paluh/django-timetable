@@ -18,6 +18,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
 
     class Meta:
         abstract = True
+        ordering = ('start',)
 
     #for examples of rule choices look into fields.py
     @classmethod
@@ -80,6 +81,7 @@ class OccurrenceFactory(models.Model, AbstractMixin):
 
     class Meta:
         abstract = True
+        ordering = ('start',)
 
     @classmethod
     def contribute(cls, event):
