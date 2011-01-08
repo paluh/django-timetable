@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-01-04 02:40+0100\n"
-"PO-Revision-Date: 2011-01-04 02:40+0100\n"
+"POT-Creation-Date: 2011-01-08 02:24+0100\n"
+"PO-Revision-Date: 2011-01-08 02:25+0100\n"
 "Last-Translator: Tomasz Rybarczyk <paluho@gmail.com>\n"
 "Language-Team: polish <paluho@gmail.com>\n"
 "MIME-Version: 1.0\n"
@@ -21,7 +21,7 @@ msgstr ""
 
 #: fields.py:18
 msgid "Time recurrency rule (for example: 'weekly', 'daily')."
-msgstr "Reguła powtarzalności (np. 'co tydzień')"
+msgstr "Częstotliwość (np. 'co tydzień')"
 
 #: fields.py:29
 msgid "Once"
@@ -48,12 +48,12 @@ msgid "Monthly"
 msgstr "Co miesiąc"
 
 #: models.py:12
-#: models.py:76
+#: models.py:77
 msgid "start"
 msgstr "początek"
 
 #: models.py:13
-#: models.py:77
+#: models.py:78
 msgid "end"
 msgstr "koniec"
 
@@ -65,31 +65,31 @@ msgstr "koniec okresu"
 msgid "This date is ignored for one time only events."
 msgstr "Ta wartość jest ignorowana w przypadku jednorazowych wydarzeń."
 
-#: models.py:25
+#: models.py:26
 msgid "Rule"
 msgstr "Reguła powtarzalności"
 
-#: models.py:69
+#: models.py:70
 msgid "Start value can't be greater then end value."
 msgstr "Początek musi być datą wcześniejszą niż koniec."
 
-#: models.py:71
+#: models.py:72
 msgid "You have to pass end period for recurring series."
 msgstr ""
 
-#: models.py:73
+#: models.py:74
 msgid "End recurring period can't be earlier than series start."
 msgstr ""
 
-#: models.py:78
+#: models.py:79
 msgid "original start"
 msgstr "oryginalny początek"
 
-#: models.py:79
+#: models.py:80
 msgid "original end"
 msgstr "oryginalny koniec"
 
-#: models.py:95
+#: models.py:97
 msgid "Start value can't be greater then end value!"
 msgstr ""
 
