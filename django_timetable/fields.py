@@ -49,7 +49,7 @@ class RruleField(models.CharField):
                 parsed_choices.append(choice)
 
         kwargs['choices'] = parsed_choices
-        kwargs['default'] = kwargs['default'] if kwargs.get('default', None) is not None else (parsed_choices and parsed_choices[0] or None)
+        kwargs['default'] = kwargs['default'] if kwargs.get('default', None) is not None else (parsed_choices and parsed_choices[0][0] or None)
         kwargs['max_length'] = max([MAX_RRULE_LENGTH] + [len(x[0]) for x in parsed_choices])
         super(RruleField, self).__init__(*args, **kwargs)
 
