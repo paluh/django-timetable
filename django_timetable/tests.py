@@ -170,7 +170,7 @@ class Models(TestCase):
         event = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
             end_recurring_period=now+datetime.timedelta(weeks=54), rule=None)
         end = now+datetime.timedelta(days=1)
-        event.get_occurrences(now, end, commit=True)
+        event.get_occurrences(period_start=now, period_end=end, commit=True)
         self.assertEqual(event.occurrences.count(), 1)
 
     def test_get_occurrences_saves_objects_on_demand(self):
@@ -180,10 +180,10 @@ class Models(TestCase):
                                                 rule=1)
 
         end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(now, end)
+        occurrences = event.get_occurrences(period_start=now, period_end=end)
 
         self.assertEqual(event.occurrences.count(), 0)
-        occurrences = event.get_occurrences(now, end, commit=True)
+        occurrences = event.get_occurrences(period_start=now, period_end=end, commit=True)
         self.assertEqual(event.occurrences.count(), len(occurrences))
 
     def test_get_occurrences_passes_defaults_to_generated_occurrences(self):
@@ -193,7 +193,7 @@ class Models(TestCase):
                                                               rule=24)
 
         end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(now, end, commit=True,
+        occurrences = event.get_occurrences(period_start=now, period_end=end, commit=True,
                                             defaults={'name': 'name'})
 
         self.assertTrue(all(o.name == 'name' for o in occurrences))
@@ -206,10 +206,10 @@ class Models(TestCase):
 
         rrule.rrule(rrule.HOURLY, dtstart=now)
         end = now+datetime.timedelta(hours=8)
-        event.get_occurrences(now, end, commit=True)
+        event.get_occurrences(period_start=now, period_end=end, commit=True)
 
         end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(now, end)
+        occurrences = event.get_occurrences(period_start=now, period_end=end)
         self.assertEqual(len(occurrences),
                          len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.HOURLY))))
 

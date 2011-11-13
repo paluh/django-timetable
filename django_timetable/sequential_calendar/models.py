@@ -34,7 +34,8 @@ class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
         self.save()
         now = datetime.datetime.now()
         self.clean()
-        self.get_occurrences(now, self.end_recurring_period, commit=True, defaults=defaults)
+        self.get_occurrences(period_start=now, period_end=self.end_recurring_period,
+                             commit=True, defaults=defaults)
         self.occurrences.filter(start__gt=self.end_recurring_period).delete()
 
     def clean(self):
@@ -46,7 +47,8 @@ class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
             return
 
         MAX_SQL_VARS = getattr(settings, 'MAX_SQL_VARS', 500)
-        occurrences = self.get_occurrences(self.start, end_recurring_period)
+        occurrences = self.get_occurrences(period_start=self.start,
+                                           period_end=end_recurring_period)
         query = Q()
         for index, occurrence in enumerate(occurrences):
             #FIXME: this event model assumes that event is period: start <= event < end

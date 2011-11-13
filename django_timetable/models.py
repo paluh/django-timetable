@@ -25,16 +25,18 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         fields = {'rule': rrule}
         return fields
 
-    def get_occurrences(self, start=None, end=None,
-                                commit=False, defaults=None):
+    def get_occurrences(self, period_start=None, period_end=None,
+                        commit=False, defaults=None):
         defaults = defaults or {}
-        start, end = start or self.start, end \
-                or self.end_recurring_period or self.end
+        period_start = period_start or self.start
+        period_end = period_end or self.end_recurring_period
+
         #FIXME: dateutil rrule implemetation ignores microseconds
-        start, end = start.replace(microsecond=0), end.replace(microsecond=0)
+        start = period_start.replace(microsecond=0)
+        period_end = period_end.replace(microsecond=0)
         delta = self.end - self.start
         if self.rule != None:
-            starts = list(self.rule(dtstart=start, until=end))
+            starts = list(self.rule(dtstart=start, until=period_end))
         else:
             starts = [self.start]
         #this prevents 'too many SQL variables' raised by sqlite
@@ -42,7 +44,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         max_sql_vars = getattr(settings, 'MAX_SQL_VARS', 500)
         for slice in map(None, *(iter(starts),) * max_sql_vars):
             count += self.occurrences.filter(original_start__in=slice).count()
-        result = list(self.occurrences.filter(start__gte=start, start__lt=end))
+        result = list(self.occurrences.filter(start__gte=start,
+                                              start__lt=period_end))
         if count != len(starts):
             db_starts = []
             for slice in map(None, *(iter(starts),) * max_sql_vars):
