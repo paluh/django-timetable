@@ -1,0 +1,21 @@
+h2. 2011-11-12
+
+* models.OccurrenceSeriesFactory takes rrule as parameter instead of rrule_kwargs. If you are going to migrate your application it should be enough to replace in OccurrenceSeriesFactory constructor call with ComplexRruleField:
+<pre>
+<code>
+OccurrenceSeriesFactory(rrule_kwargs={'kwarg1': value1, 'kwarg2': value2... })
+</code>
+</pre>
+
+replace with:
+
+<pre>
+<code>
+from django_timetable.fields import ComplexRruleField
+OccurrenceSeriesFactory(rrule=ComplexRruleField(kwarg1=value1, kwarg2=value2...)
+</code>
+</pre>
+
+* fields.RruleField was renamed to fields.ComplexRruleField
+
+* fields.RruleField is a new class which can represent simple time intervals

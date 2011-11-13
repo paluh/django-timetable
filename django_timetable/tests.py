@@ -7,78 +7,100 @@ from django.db import models
 from django.test import TestCase
 
 from .models import OccurrenceSeriesFactory, OccurrenceFactory
-from .fields import RruleField
+from .fields import RruleField, ComplexRruleField
 
-RRULES_CHOICES = (
+class OccurrenceSeriesWithRruleField(OccurrenceSeriesFactory.construct(rrule=RruleField(rrule.HOURLY,
+                                                                                       blank=True, null=True))):
+    pass
+
+
+class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeriesWithRruleField)):
+    # required field
+    name = models.CharField(max_length=128)
+
+    def __unicode__(self):
+        return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
+
+
+
+class RruleFieldTest(TestCase):
+    def test_returned_rrule_function(self):
+        now = datetime.datetime.now()
+        o = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+                                                          end_recurring_period=now+datetime.timedelta(weeks=54),
+                                                          rule=24*7*2)
+        self.assertEqual(list(o.rule(dtstart=o.start, until=o.end_recurring_period)),
+                        list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period,
+                                          freq=rrule.WEEKLY, interval=2)))
+
+    def test_once_rrule_value(self):
+        o = OccurrenceSeriesWithRruleField(rule=None)
+        self.assertEqual(o.rule, None)
+
+
+    def test_modelform_save_for_non_empty_value(self):
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = OccurrenceSeriesWithRruleField
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                'end': start+datetime.timedelta(hours=1),
+                'end_recurring_period': start+datetime.timedelta(weeks=1),
+                'rule': '1'
+        })
+        self.assertTrue(form.is_valid())
+        series = form.save()
+        series = OccurrenceSeriesWithRruleField.objects.get(id=series.id)
+        self.assertEqual(series.rule.keywords['interval'], 1)
+
+
+COMPLEX_RRULES_CHOICES = (
     ('', 'once',),
     ('HOURLY', 'hourly'),
     ('DAILY', 'daily',),
     ('WEEKLY', 'weekly'),
-    ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
+    ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY,
+                                            'interval': 2}),
+    ('LAST_DAY_OF_MONTH', 'last day of month', {'freq': rrule.MONTHLY,
+                                                'bymonthday':-1})
 )
 
-class OccurrenceSeries(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices': RRULES_CHOICES, 'blank':True})):
+class OccurrenceSeriesWithComplexRruleField(OccurrenceSeriesFactory.construct(rrule=ComplexRruleField(rrule.HOURLY,
+                                                                              choices=COMPLEX_RRULES_CHOICES,
+                                                                              blank=True, null=True))):
     pass
 
-class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeries)):
+
+class OccurrenceWithComplexRruleField(OccurrenceFactory.construct(event=OccurrenceSeriesWithComplexRruleField)):
     name = models.CharField(max_length=128, blank=True)
 
     def __unicode__(self):
         return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
 
-#models for testing defaults values passing
-class OccurrenceSeriesWithRequiredFields(OccurrenceSeriesFactory.construct()):
-    pass
-class OccurrenceWithRequiredField(OccurrenceFactory.construct(event=OccurrenceSeriesWithRequiredFields)):
-    required_value = models.IntegerField()
-
-    def __unicode__(self):
-        return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
 
 CUSTOM_DISPLAY = u'custom display'
-class SeriesWithCustomBlank(OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('', CUSTOM_DISPLAY),('WEEKLY', 'weekly'))})):
+field_with_custom_blank = ComplexRruleField(choices=(('', CUSTOM_DISPLAY),
+                                                     ('WEEKLY', 'weekly')))
+class OccurrenceSeriesWithComplexRruleFieldAndCustomBlank(OccurrenceSeriesFactory.construct(rrule=field_with_custom_blank)):
     pass
 
-class Fields(TestCase):
+
+class ComplexRruleFieldTest(TestCase):
     def test_custom_rrule_value(self):
         now = datetime.datetime.now()
-        o = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
+        o = OccurrenceSeriesWithComplexRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+                                                                 end_recurring_period=now+datetime.timedelta(weeks=54),
+                                                                 rule='EVERY_TWO_WEEKS')
         self.assertEqual(list(o.rule(dtstart=o.start, until=o.end_recurring_period)),
-                list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period, freq=rrule.WEEKLY, interval=2)))
+                         list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period,
+                                          freq=rrule.WEEKLY, interval=2)))
 
     def test_once_rrule_value(self):
-        o = OccurrenceSeries(rule='ONCE')
+        o = OccurrenceSeriesWithComplexRruleField(rule='')
         self.assertEqual(o.rule, None)
 
-    def test_modelform_validation_for_rrule_value(self):
-        class OccurrenceSeriesForm(forms.ModelForm):
-            class Meta:
-                model = OccurrenceSeries
-        start = datetime.datetime.now()
-        form = OccurrenceSeriesForm(data={'start': start,
-                'end': start+datetime.timedelta(hours=1),
-                'end_recurring_period': start+datetime.timedelta(weeks=1),
-                'rule': 'WEEKLY'
-        })
-        self.assertTrue(form.is_valid())
-
-        form = OccurrenceSeriesForm(data={'start': start,
-                'end': start+datetime.timedelta(hours=1),
-                'end_recurring_period': start+datetime.timedelta(weeks=1),
-                'rule': 'UNKNOWN'
-        })
-        self.assertFalse(form.is_valid())
-        self.assertTrue('rule' in form.errors)
-
-    def test_incorrect_rrule_choice(self):
-        self.assertRaises(AttributeError, lambda: OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('UNKNOWN', u'unkown rule'),)}))
-
-    def test_incorrect_rrule_choice(self):
-        self.assertRaises(ValueError, lambda: OccurrenceSeriesFactory.construct(rrule_kwargs={'choices':(('WRONG_PARAMS', u'unkown rule', {'test': 1}),)}))
-
     def test_blank_choice_with_custom_display(self):
-        s = SeriesWithCustomBlank()
+        s = OccurrenceSeriesWithComplexRruleFieldAndCustomBlank()
         s.rule = ''
         self.assertEqual(len(s._meta.get_field('rule').get_choices()), 2)
         self.assertTrue(s._meta.get_field('rule').blank)
@@ -87,46 +109,47 @@ class Fields(TestCase):
     def test_modelform_with_custom_blank_display_validation(self):
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
-                model = SeriesWithCustomBlank
+                model = OccurrenceSeriesWithComplexRruleFieldAndCustomBlank
+        start = datetime.datetime.now()
+        form = OccurrenceSeriesForm(data={'start': start,
+                                          'end': start+datetime.timedelta(hours=1),
+                                          'end_recurring_period': start+datetime.timedelta(weeks=1),
+                                          'rule': ''})
+        form.is_valid()
+        series = form.save(commit=False)
+        self.assertEqual(series.rule, None)
+
+    def test_modelform_save_for_empty_value(self):
+        class OccurrenceSeriesForm(forms.ModelForm):
+            class Meta:
+                model = OccurrenceSeriesWithComplexRruleField
         start = datetime.datetime.now()
         form = OccurrenceSeriesForm(data={'start': start,
                 'end': start+datetime.timedelta(hours=1),
                 'end_recurring_period': start+datetime.timedelta(weeks=1),
                 'rule': ''
         })
+        self.assertTrue(form.is_valid())
         form.is_valid()
-        series = form.save(commit=False)
+        series = form.save()
         self.assertEqual(series.rule, None)
+        self.assertEqual(len(series.get_occurrences()), 1)
 
-    def test_modelform_save_for_rrule_value(self):
+    def test_modelform_save_for_non_empty_value(self):
         class OccurrenceSeriesForm(forms.ModelForm):
             class Meta:
-                model = OccurrenceSeries
+                model = OccurrenceSeriesWithComplexRruleField
         start = datetime.datetime.now()
         form = OccurrenceSeriesForm(data={'start': start,
-                'end': start+datetime.timedelta(hours=1),
-                'end_recurring_period': start+datetime.timedelta(weeks=1),
-                'rule': 'WEEKLY'
-        })
-        form.is_valid()
+                                          'end': start+datetime.timedelta(hours=1),
+                                          'end_recurring_period': start+datetime.timedelta(weeks=1),
+                                          'rule': 'EVERY_TWO_WEEKS'})
+        self.assertTrue(form.is_valid())
         series = form.save()
-        series = OccurrenceSeries.objects.get(id=series.id)
-        self.assertEqual(series.rule.name, 'WEEKLY')
-
-    def test_modelform_save_for_custom_rrule_value(self):
-        class OccurrenceSeriesForm(forms.ModelForm):
-            class Meta:
-                model = OccurrenceSeries
-        start = datetime.datetime.now()
-        form = OccurrenceSeriesForm(data={'start': start,
-                'end': start+datetime.timedelta(hours=1),
-                'end_recurring_period': start+datetime.timedelta(weeks=1),
-                'rule': 'EVERY_TWO_WEEKS'
-        })
-        form.is_valid()
-        series = form.save()
-        series = OccurrenceSeries.objects.get(id=series.id)
+        series = OccurrenceSeriesWithComplexRruleField.objects.get(id=series.id)
         self.assertEqual(series.rule.name, 'EVERY_TWO_WEEKS')
+
+
 
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):
@@ -134,24 +157,28 @@ class Models(TestCase):
         end = start+datetime.timedelta(hours=1)
         end_recurring_period=start+datetime.timedelta(weeks=5)
 
-        event = OccurrenceSeries.objects.create(start=start, end=end, end_recurring_period=end_recurring_period, rule='WEEKLY')
+        event = OccurrenceSeriesWithRruleField.objects.create(start=start, end=end,
+                                                end_recurring_period=end_recurring_period,
+                                                rule=24*7)
         occurrences = event.get_occurrences(commit=False)
-        self.assertEqual(len(occurrences), len(list(rrule.rrule(dtstart=start, until=end_recurring_period, freq=rrule.WEEKLY))))
+        self.assertEqual(len(occurrences), len(list(rrule.rrule(dtstart=start,
+                                                                until=end_recurring_period,
+                                                                freq=rrule.WEEKLY))))
 
     def test_get_occurrences_returns_one_object_for_onetime_rule(self):
         now = datetime.datetime.now()
-        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='ONCE')
+        event = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+            end_recurring_period=now+datetime.timedelta(weeks=54), rule=None)
         end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(now, end, commit=True)
+        event.get_occurrences(now, end, commit=True)
         self.assertEqual(event.occurrences.count(), 1)
 
     def test_get_occurrences_saves_objects_on_demand(self):
         now = datetime.datetime.now()
-        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='HOURLY')
+        event = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+                                                end_recurring_period=now+datetime.timedelta(weeks=54),
+                                                rule=1)
 
-        rule = rrule.rrule(rrule.HOURLY, dtstart=now)
         end = now+datetime.timedelta(days=1)
         occurrences = event.get_occurrences(now, end)
 
@@ -161,42 +188,35 @@ class Models(TestCase):
 
     def test_get_occurrences_passes_defaults_to_generated_occurrences(self):
         now = datetime.datetime.now()
-        event = OccurrenceSeriesWithRequiredFields.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=1), rule='DAILY')
+        event = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+                                                              end_recurring_period=now+datetime.timedelta(weeks=1),
+                                                              rule=24)
 
-        rule = rrule.rrule(rrule.HOURLY, dtstart=now)
         end = now+datetime.timedelta(days=1)
-        occurrences = event.get_occurrences(commit=True, defaults={'required_value': 1})
+        occurrences = event.get_occurrences(now, end, commit=True,
+                                            defaults={'name': 'name'})
 
-    def test_get_occurrences_returns_proper_number_when_some_tracks_already_exists(self):
+        self.assertTrue(all(o.name == 'name' for o in occurrences))
+
+    def test_get_occurrences_returns_proper_number_when_some_occurrencies_already_exists(self):
         now = datetime.datetime.now().replace(microsecond=0)
-        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='HOURLY')
+        event = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
+                                                end_recurring_period=now+datetime.timedelta(weeks=54),
+                                                rule=1)
 
-        rule = rrule.rrule(rrule.HOURLY, dtstart=now)
+        rrule.rrule(rrule.HOURLY, dtstart=now)
         end = now+datetime.timedelta(hours=8)
         event.get_occurrences(now, end, commit=True)
 
         end = now+datetime.timedelta(days=1)
         occurrences = event.get_occurrences(now, end)
         self.assertEqual(len(occurrences),
-                len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.HOURLY))))
-
-    def test_get_occurrences_returns_proper_number_for_custom_rrule(self):
-        now = datetime.datetime.now().replace(microsecond=0)
-        event = OccurrenceSeries.objects.create(start=now, end=now+datetime.timedelta(hours=1),
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='EVERY_TWO_WEEKS')
-
-        end = now+datetime.timedelta(weeks=4)
-        event.get_occurrences(now, end)
-
-        occurrences = event.get_occurrences(now, end)
-        self.assertEqual(len(occurrences),
-                len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.WEEKLY, interval=2))))
+                         len(list(rrule.rrule(dtstart=now, until=end, freq=rrule.HOURLY))))
 
     def test_save_fails_when_start_is_greater_then_end(self):
         now = datetime.datetime.now()
-        event = OccurrenceSeries(start=now+datetime.timedelta(hours=1), end=now,
-            end_recurring_period=now+datetime.timedelta(weeks=54), rule='HOURLY')
+        event = OccurrenceSeriesWithRruleField(start=now+datetime.timedelta(hours=1), end=now,
+                                 end_recurring_period=now+datetime.timedelta(weeks=54),
+                                 rule=1)
         self.assertRaises(ValidationError, lambda: event.full_clean())
 

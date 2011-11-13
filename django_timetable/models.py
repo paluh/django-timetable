@@ -1,11 +1,11 @@
-from django.conf import settings
+from dateutil import rrule
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 from .abstract import AbstractMixin
-from .fields import RruleField
 
 
 class OccurrenceSeriesFactory(models.Model, AbstractMixin):
@@ -20,12 +20,9 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         abstract = True
         ordering = ('start',)
 
-    #for examples of rule choices look into fields.py
     @classmethod
-    def contribute(cls, rrule_kwargs=None):
-        defaults = {'verbose_name': _('Rule')}
-        defaults.update(rrule_kwargs or {})
-        fields = {'rule': RruleField(**defaults)}
+    def contribute(cls, rrule=rrule):
+        fields = {'rule': rrule}
         return fields
 
     def get_occurrences(self, start=None, end=None,
@@ -72,6 +69,7 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
             raise ValidationError(_("You have to pass end period for recurring series."))
         if self.start and self.end_recurring_period and self.start > self.end_recurring_period:
             raise ValidationError(_("End recurring period can't be earlier than series start."))
+
 
 class OccurrenceFactory(models.Model, AbstractMixin):
     start = models.DateTimeField(_('start'), blank=True)

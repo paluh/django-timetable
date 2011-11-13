@@ -1,22 +1,20 @@
 h1. django_timetable
 
-h2. OVERVIEW
+h2. INTRODUCTION
 
 “What does this application do?”
 
-* It implements recurring occurrences series (for example: create series of 'event' which occurres every monday for next two months).
-* It allows you to define own recurrence rules based on dateutil rrule definitions.
-* It uses abstract models factories (http://gist.github.com/584106) so you can easly subclass given models without any overhead or generic relations.
+This application implements as little as possible to allow you easily create calendar/schedule models.
+
+It provides only abstract models (to be precise: abstract models factories) with timing related fields (start, end etc.). These models represent occurrences series and single occurrence. Additionally there are two fields which allows you to store custom “recurrence rules” (I'm using wonderful dateutil library) - of course you can provide your own fields if they can quack like mine.
 
 .. what doesn't?
 
 It doesn't implement any ,,Event'' class or ,,Calendar'' class  - it's up to you how you define calendar (it can be User or any other object) or how your Event object looks like. Because all 'models' in this aplication are based on abstract class factory you can easly subclass them in very flexible manner.
 
-This application is loosly inspired on django-schedule app, but has LESS features :-)
-
 h2. USAGE
 
-I'm going to implement exmple app soon. Till then you have to look into test.py if you want to see any example.
+I’m going to implement exmple app soon. Till then you have to look into test.py if you want to see any example.
 
 h2. TESTING
 

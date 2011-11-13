@@ -7,6 +7,7 @@ from django.db import models
 from django.test import TestCase
 
 from .models import SequentialOccurrenceSeriesFactory, SequentialOccurrenceFactory
+from ..fields import ComplexRruleField
 
 RRULES_CHOICES = (
     ('', 'once',),
@@ -15,14 +16,18 @@ RRULES_CHOICES = (
     ('WEEKLY', 'weekly'),
     ('EVERY_TWO_WEEKS', 'every two weeks', {'freq': rrule.WEEKLY, 'interval': 2}),
 )
-class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User, rrule_kwargs={'choices':RRULES_CHOICES})):
+
+class OccurrenceSeries(SequentialOccurrenceSeriesFactory.construct(calendar=User,
+                                                                   rrule=ComplexRruleField(choices=RRULES_CHOICES))):
     pass
+
 
 class Occurrence(SequentialOccurrenceFactory.construct(event=OccurrenceSeries)):
     name = models.CharField(max_length=128, blank=True)
 
     def __unicode__(self):
         return '%s (%s - %s)' % (self.event, self.start, self.end)
+
 
 class Models(TestCase):
     def setUp(self):
@@ -40,8 +45,9 @@ class Models(TestCase):
         )
         event.get_occurrences(commit=True)
 
-        rule = rrule.rrule(rrule.DAILY)
-        self.assertEqual(event.occurrences.count(), len(list(rrule.rrule(dtstart=now, until=end_recurring, freq=rrule.DAILY))))
+        self.assertEqual(event.occurrences.count(), len(list(rrule.rrule(dtstart=now,
+                                                                         until=end_recurring,
+                                                                         freq=rrule.DAILY))))
 
     def test_extending_recurring_period_generates_additional_occurrences(self):
         now = datetime.datetime.now()
