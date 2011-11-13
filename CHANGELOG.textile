@@ -4,14 +4,11 @@ h2. 2011-11-12
 <pre>
 <code>
 OccurrenceSeriesFactory(rrule_kwargs={'kwarg1': value1, 'kwarg2': value2... })
-</code>
-</pre>
 
-replace with:
+# replace with:
 
-<pre>
-<code>
 from django_timetable.fields import ComplexRruleField
+
 OccurrenceSeriesFactory(rrule=ComplexRruleField(kwarg1=value1, kwarg2=value2...)
 </code>
 </pre>
