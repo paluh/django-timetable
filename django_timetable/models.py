@@ -1,6 +1,5 @@
 from dateutil import rrule
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
@@ -25,40 +24,44 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         fields = {'rule': rrule}
         return fields
 
-    def get_occurrences(self, period_start=None, period_end=None,
-                        commit=False, defaults=None):
-        defaults = defaults or {}
-        period_start = period_start or self.start
-        period_end = period_end or self.end_recurring_period
-
-        #FIXME: dateutil rrule implemetation ignores microseconds
-        start = period_start.replace(microsecond=0)
-        period_end = period_end.replace(microsecond=0)
+    def _get_missing_occurrences(self, all_occurrences,
+                                 existing_occurrences, **defaults):
+        result = []
+        existing_occurrences = set(existing_occurrences)
+        missing = filter(lambda start: start not in existing_occurrences,
+                         all_occurrences)
         delta = self.end - self.start
+        for s in missing:
+            result.append(self.occurrences.model(
+                event=self,
+                original_start=s, start=s,
+                original_end=s+delta, end=s+delta, **defaults)
+            )
+        return result
+
+    def get_occurrences(self, period_start=None, period_end=None,
+                        commit=False, defaults=None, queryset=None):
+        defaults = defaults or {}
+        queryset = queryset or self.occurrences.all()
+
+        # dateutil ignores microseconds
+        start = self.start.replace(microsecond=0)
+        period_start = (period_start or self.start).replace(microsecond=0)
+        period_end = (period_end or self.end_recurring_period or self.end).replace(microsecond=0)
+
         if self.rule != None:
-            starts = list(self.rule(dtstart=start, until=period_end))
+            starts = list(self.rule(period_start=start,
+                                    period_end=period_end))
+            starts = [d for d in starts if d >= period_start]
         else:
-            starts = [self.start]
-        #this prevents 'too many SQL variables' raised by sqlite
-        count = 0
-        max_sql_vars = getattr(settings, 'MAX_SQL_VARS', 500)
-        for slice in map(None, *(iter(starts),) * max_sql_vars):
-            count += self.occurrences.filter(original_start__in=slice).count()
-        result = list(self.occurrences.filter(start__gte=start,
-                                              start__lt=period_end))
-        if count != len(starts):
-            db_starts = []
-            for slice in map(None, *(iter(starts),) * max_sql_vars):
-                db_starts.extend(self.occurrences \
-                        .filter(original_start__in=slice) \
-                        .values_list('original_start', flat=True))
-            missing = filter(lambda start: start not in db_starts, starts)
-            for s in missing:
-                result.append(self.occurrences.model(
-                    event=self,
-                    original_start=s, start=s,
-                    original_end=s+delta, end=s+delta, **defaults)
-                )
+            starts = [start]
+        result = list(queryset.filter(original_start__lte=period_end,
+                                      original_end__gte=period_start))
+        if len(result) != len(starts):
+            existing = queryset.filter(original_start__lte=period_end,
+                                       original_end__gte=period_start).values_list('original_start',
+                                                                                   flat=True)
+            result.extend(self._get_missing_occurrences(starts, existing, **defaults))
             if commit:
                 for occurrence in result:
                     occurrence.save()

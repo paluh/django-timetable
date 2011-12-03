@@ -19,7 +19,7 @@ class Occurrence(OccurrenceFactory.construct(event=OccurrenceSeriesWithRruleFiel
     name = models.CharField(max_length=128)
 
     def __unicode__(self):
-        return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
+        return '%s (%s - %s)' % (self.name or '[noname]', self.start, self.end)
 
 
 
@@ -29,7 +29,7 @@ class RruleFieldTest(TestCase):
         o = OccurrenceSeriesWithRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
                                                           end_recurring_period=now+datetime.timedelta(weeks=54),
                                                           rule=24*7*2)
-        self.assertEqual(list(o.rule(dtstart=o.start, until=o.end_recurring_period)),
+        self.assertEqual(list(o.rule(period_start=o.start, period_end=o.end_recurring_period)),
                         list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period,
                                           freq=rrule.WEEKLY, interval=2)))
 
@@ -48,10 +48,11 @@ class RruleFieldTest(TestCase):
                 'end_recurring_period': start+datetime.timedelta(weeks=1),
                 'rule': '1'
         })
+        form.is_valid()
         self.assertTrue(form.is_valid())
         series = form.save()
         series = OccurrenceSeriesWithRruleField.objects.get(id=series.id)
-        self.assertEqual(series.rule.keywords['interval'], 1)
+        self.assertEqual(series.rule.interval, 1)
 
 
 COMPLEX_RRULES_CHOICES = (
@@ -75,7 +76,7 @@ class OccurrenceWithComplexRruleField(OccurrenceFactory.construct(event=Occurren
     name = models.CharField(max_length=128, blank=True)
 
     def __unicode__(self):
-        return '%s (%s - %s)' % (self.name or self.event.name, self.start, self.end)
+        return '%s (%s - %s)' % (self.name or '[noname]', self.start, self.end)
 
 
 CUSTOM_DISPLAY = u'custom display'
@@ -150,7 +151,6 @@ class ComplexRruleFieldTest(TestCase):
         self.assertEqual(series.rule.name, 'EVERY_TWO_WEEKS')
 
 
-
 class Models(TestCase):
     def test_get_occurrences_saves_proper_objects_number(self):
         start = datetime.datetime.now().replace(microsecond=0)
@@ -219,4 +219,32 @@ class Models(TestCase):
                                  end_recurring_period=now+datetime.timedelta(weeks=54),
                                  rule=1)
         self.assertRaises(ValidationError, lambda: event.full_clean())
+
+    def test_second_get_occurrences_call_with_commit_false_returns_correct_occurrences(self):
+        # regression test
+        start = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        end_recurring_period = start + datetime.timedelta(hours=1)
+        event = OccurrenceSeriesWithRruleField.objects.create(start=start, end=start,
+                                                              end_recurring_period=end_recurring_period,
+                                                              rule=1)
+        occurrences_1 = event.get_occurrences(period_start=start, period_end=end_recurring_period, commit=True)
+        occurrences_2 = event.get_occurrences(period_start=start, period_end=end_recurring_period, commit=False)
+        self.assertEqual(len(occurrences_1), len(occurrences_2))
+        self.assertEqual(occurrences_1, occurrences_2)
+
+    def test_second_get_occurrences_call_with_commit_true_returns_correct_occurrences(self):
+        # regression test
+        start = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        end_recurring_period = start + datetime.timedelta(hours=4)
+        event = OccurrenceSeriesWithRruleField.objects.create(start=start, end=start,
+                                                              end_recurring_period=end_recurring_period,
+                                                              rule=1)
+        occurrences_1 = event.get_occurrences(period_start=start, period_end=end_recurring_period, commit=True)
+        # this call should not change anything
+        event.get_occurrences(period_start=start+datetime.timedelta(hours=2),
+                              period_end=end_recurring_period, commit=True)
+        occurrences_3 = event.get_occurrences(period_start=start,
+                                              period_end=end_recurring_period, commit=False)
+        self.assertEqual(len(occurrences_1), len(occurrences_3))
+        self.assertEqual(occurrences_1, occurrences_3)
 

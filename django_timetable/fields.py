@@ -1,3 +1,5 @@
+import datetime
+
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.translation import ugettext
 from dateutil import rrule
@@ -5,38 +7,55 @@ from functools import partial
 
 from django.db import models
 
+
+class BaseRruleValue(object):
+    def __call__(self, dtstart, until):
+        raise NotImplementedError
+
+
 class RruleField(models.PositiveIntegerField):
     """
-    Simple RruleField which can represents regular time periods (interval and frequency).
+    Simple RruleField which can represent regular time periods (interval and frequency).
     """
     __metaclass__ = models.SubfieldBase
+
+    class RruleValue(BaseRruleValue):
+        def __init__(self, frequency, interval):
+            self.frequency = frequency
+            self.interval = interval
+
+        def __call__(self, period_start, period_end):
+            return rrule.rrule(freq=self.frequency, interval=self.interval,
+                               dtstart=period_start, until=period_end)
 
     def __init__(self, frequency, *args, **kwargs):
         self.frequency = frequency
         super(RruleField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
-        if value is None or isinstance(value, partial):
+        if value is None or isinstance(value, RruleField.RruleValue):
             return value
         value = super(RruleField, self).to_python(value)
-        return partial(rrule.rrule, self.frequency,
-                       interval=value)
+        return RruleField.RruleValue(frequency=self.frequency, interval=value)
 
     def validate(self, value, model_instance):
-        if isinstance(value, partial):
-            value = value.keywords['interval']
+        if isinstance(value, RruleField.RruleValue):
+            value = value.interval
         return super(RruleField, self).validate(value, model_instance)
 
     def get_db_prep_value(self, value):
         if (value is None) or isinstance(value, int):
             return value
-        return value.keywords['interval']
+        return value.interval
 
     def value_to_string(self, obj):
         val = self._get_val_from_obj(obj)
         if val:
-            return val.keywords['interval']
+            return str(val.interval)
         return ''
+
+    def value_from_object(self, obj):
+        return getattr(obj, self.attname).interval
 
 
 class ComplexRruleField(models.CharField):
@@ -45,6 +64,18 @@ class ComplexRruleField(models.CharField):
     definitions.
     """
     __metaclass__ = models.SubfieldBase
+
+    class RruleValue(BaseRruleValue):
+        def __init__(self, name, *args, **kwargs):
+            self.name = name
+            self.args = args
+            self.kwargs = kwargs
+            # validate params
+            self.rule = partial(rrule.rrule, *args, **kwargs)
+
+        def __call__(self, dtstart, until):
+            return self.rule(dtstart=dtstart, until=until)
+
 
     def __init__(self, *args, **kwargs):
         #you can define rrules consts by:
@@ -58,7 +89,8 @@ class ComplexRruleField(models.CharField):
             ('DAILY', ugettext('Daily')),
             ('WEEKLY', ugettext('Weekly')),
             #example of more complicated rule
-            ('EVERY_TWO_WEEKS', ugettext('Every two weeks'), {'freq': rrule.WEEKLY, 'interval': 2}),
+            ('EVERY_TWO_WEEKS', ugettext('Every two weeks'),
+             {'freq': rrule.WEEKLY, 'interval': 2}),
             ('YEARLY', ugettext('Yearly')),
             ('MONTHLY', ugettext('Monthly')),
         )
@@ -101,14 +133,7 @@ class ComplexRruleField(models.CharField):
     flatchoices = property(_get_flatchoices)
 
     def _get_rrule(self, name, **params):
-        try:
-            #validate params
-            rrule.rrule(**params)
-        except TypeError:
-            raise ValueError("Could ont apply your params to rrule!")
-        rule = partial(rrule.rrule, **params)
-        rule.name = name
-        return rule
+        return ComplexRruleField.RruleValue(name, **params)
 
     def get_prep_value(self, value):
         if isinstance(value, basestring):
