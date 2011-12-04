@@ -17,3 +17,8 @@ OccurrenceSeriesFactory(rrule=ComplexRruleField(kwarg1=value1, kwarg2=value2...)
 * <code>fields.RruleField</code> was renamed to <code>fields.ComplexRruleField</code>
 
 * <code>fields.RruleField</code> is a new class which can represent simple time intervals
+
+
+h2. 2011-12-04
+
+* <code>fields.RruleField</code> and <code>fields.ComplexRruleField</code> returns instances of <code>fields.BaseRruleValue</code> which is not a <code>functools.partial</code> instance any more but proper callable object. If you want to create any custom recurrence rule field it should return callable object which subclasses <code>fields.BaseRruleValue</code>.
