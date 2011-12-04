@@ -92,7 +92,7 @@ class ComplexRruleFieldTest(TestCase):
         o = OccurrenceSeriesWithComplexRruleField.objects.create(start=now, end=now+datetime.timedelta(hours=1),
                                                                  end_recurring_period=now+datetime.timedelta(weeks=54),
                                                                  rule='EVERY_TWO_WEEKS')
-        self.assertEqual(list(o.rule(dtstart=o.start, until=o.end_recurring_period)),
+        self.assertEqual(list(o.rule(period_start=o.start, period_end=o.end_recurring_period)),
                          list(rrule.rrule(dtstart=o.start, until=o.end_recurring_period,
                                           freq=rrule.WEEKLY, interval=2)))
 

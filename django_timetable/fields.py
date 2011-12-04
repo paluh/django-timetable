@@ -9,7 +9,7 @@ from django.db import models
 
 
 class BaseRruleValue(object):
-    def __call__(self, dtstart, until):
+    def __call__(self, period_start, period_end):
         raise NotImplementedError
 
 
@@ -73,8 +73,8 @@ class ComplexRruleField(models.CharField):
             # validate params
             self.rule = partial(rrule.rrule, *args, **kwargs)
 
-        def __call__(self, dtstart, until):
-            return self.rule(dtstart=dtstart, until=until)
+        def __call__(self, period_start, period_end):
+            return self.rule(dtstart=period_start, until=period_end)
 
 
     def __init__(self, *args, **kwargs):

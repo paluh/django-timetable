@@ -47,7 +47,11 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         # dateutil ignores microseconds
         start = self.start.replace(microsecond=0)
         period_start = (period_start or self.start).replace(microsecond=0)
-        period_end = (period_end or self.end_recurring_period or self.end).replace(microsecond=0)
+        if period_end is None:
+            period_end = self.end_recurring_period or self.end
+        elif self.end_recurring_period is not None:
+            period_end = min(period_end, self.end_recurring_period)
+        period_end = period_end.replace(microsecond=0)
 
         if self.rule != None:
             starts = list(self.rule(period_start=start,
