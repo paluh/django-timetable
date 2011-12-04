@@ -70,7 +70,6 @@ class ComplexRruleField(models.CharField):
             self.name = name
             self.args = args
             self.kwargs = kwargs
-            # validate params
             self.rule = partial(rrule.rrule, *args, **kwargs)
 
         def __call__(self, period_start, period_end):
