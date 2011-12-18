@@ -25,14 +25,17 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
         return fields
 
     def _get_missing_occurrences(self, all_occurrences,
-                                 existing_occurrences, **defaults):
+                                 existing_occurrences,
+                                 occurrence_model=None,
+                                 **defaults):
+        occurrence_model = occurrence_model or self.occurrences.model
         result = []
         existing_occurrences = set(existing_occurrences)
         missing = filter(lambda start: start not in existing_occurrences,
                          all_occurrences)
         delta = self.end - self.start
         for s in missing:
-            result.append(self.occurrences.model(
+            result.append(occurrence_model(
                 event=self,
                 original_start=s, start=s,
                 original_end=s+delta, end=s+delta, **defaults)
@@ -42,7 +45,8 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
     def get_occurrences(self, period_start=None, period_end=None,
                         commit=False, defaults=None, queryset=None):
         defaults = defaults or {}
-        queryset = queryset or self.occurrences.all()
+        queryset = queryset if queryset is not None else self.occurrences.all()
+        occurrence_model = queryset.model
 
         # dateutil ignores microseconds
         start = self.start.replace(microsecond=0)
@@ -65,7 +69,9 @@ class OccurrenceSeriesFactory(models.Model, AbstractMixin):
             existing = queryset.filter(original_start__lte=period_end,
                                        original_end__gte=period_start).values_list('original_start',
                                                                                    flat=True)
-            result.extend(self._get_missing_occurrences(starts, existing, **defaults))
+            result.extend(self._get_missing_occurrences(starts, existing,
+                                                        occurrence_model=occurrence_model,
+                                                        **defaults))
             if commit:
                 for occurrence in result:
                     occurrence.save()

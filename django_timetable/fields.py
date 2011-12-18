@@ -55,7 +55,8 @@ class RruleField(models.PositiveIntegerField):
         return ''
 
     def value_from_object(self, obj):
-        return getattr(obj, self.attname).interval
+        if getattr(obj, self.attname) is not None:
+            return getattr(obj, self.attname).interval
 
 
 class ComplexRruleField(models.CharField):
