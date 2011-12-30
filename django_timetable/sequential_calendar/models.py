@@ -38,6 +38,13 @@ class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
                              commit=True, defaults=defaults)
         self.occurrences.filter(start__gt=self.end_recurring_period).delete()
 
+    def _get_collision_query(self, occurrence):
+        subquery = (Q(occurrences__start__gte=occurrence.start) & Q(occurrences__start__lt=occurrence.end)) \
+                | (Q(occurrences__start__lte=occurrence.start) & Q(occurrences__end__gt=occurrence.start))
+        if occurrence.pk:
+            subquery &= ~Q(occurrences__pk=occurrence.pk)
+        return subquery
+
     def clean(self):
         super(SequentialOccurrenceSeriesFactory, self).clean()
         end_recurring_period = self.end_recurring_period
@@ -51,12 +58,7 @@ class SequentialOccurrenceSeriesFactory(CalendarOccurrenceSeriesFactory):
                                            period_end=end_recurring_period)
         query = Q()
         for index, occurrence in enumerate(occurrences):
-            #FIXME: this event model assumes that event is period: start <= event < end
-            #probably this should be customizable
-            subquery = (Q(occurrences__start__gte=occurrence.start) & Q(occurrences__start__lt=occurrence.end)) \
-                    | (Q(occurrences__start__lte=occurrence.start) & Q(occurrences__end__gt=occurrence.start))
-            if occurrence.pk:
-                subquery &= ~Q(occurrences__pk=occurrence.pk)
+            subquery = self._get_collision_query(occurrence)
             query |= subquery
             #this prevents 'too many SQL variables' raised by sqlite
             if index and index%(MAX_SQL_VARS/5)== 0:
