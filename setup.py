@@ -1,6 +1,4 @@
 from setuptools import setup, find_packages
-import os
-import platform
 
 DESCRIPTION = "A reusable Django application to represent recurring occurrences/events"
 
@@ -22,7 +20,7 @@ CLASSIFIERS = [
 
 setup(
     name='django-timetable',
-    version='0.1',
+    version='2013.10.1',
     packages=find_packages(),
     include_package_data=True,
     author='Paluh',
