@@ -43,7 +43,7 @@ class RruleField(models.PositiveIntegerField):
             value = value.interval
         return super(RruleField, self).validate(value, model_instance)
 
-    def get_db_prep_value(self, value, connection=None):
+    def get_db_prep_value(self, value, connection=None, prepared=False):
         if (value is None) or isinstance(value, int):
             return value
         return value.interval
